@@ -72,7 +72,11 @@ export default function TodoTable({ todos, onDelete }: TodoTableProps) {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
+      // Extract just the date part and create a local date to avoid timezone issues
+      const datePart = dateString.split('T')[0]; // "2025-09-30"
+      const [year, month, day] = datePart.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day); // month is 0-indexed
+      return format(localDate, 'MMM dd, yyyy');
     } catch {
       return dateString;
     }
