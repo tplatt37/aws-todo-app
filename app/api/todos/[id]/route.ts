@@ -6,22 +6,23 @@ import { createErrorResponse, createSuccessResponse } from '@/utils/errorHandler
 // GET /api/todos/[id] - Get a single todo
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const todo = await getTodoById(params.id);
+    const todo = await getTodoById(id);
     
     if (!todo) {
       return createErrorResponse({
         message: 'Todo not found',
         code: 'NOT_FOUND',
-        details: { id: params.id },
+        details: { id },
       }, 404);
     }
 
     return createSuccessResponse(todo);
   } catch (error) {
-    console.error(`GET /api/todos/${params.id} error:`, error);
+    console.error(`GET /api/todos/${id} error:`, error);
     return createErrorResponse(error);
   }
 }
@@ -29,8 +30,9 @@ export async function GET(
 // PUT /api/todos/[id] - Update a todo
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
     
@@ -88,19 +90,19 @@ export async function PUT(
       }
     });
 
-    const updatedTodo = await updateTodo(params.id, input);
+    const updatedTodo = await updateTodo(id, input);
     
     if (!updatedTodo) {
       return createErrorResponse({
         message: 'Todo not found',
         code: 'NOT_FOUND',
-        details: { id: params.id },
+        details: { id },
       }, 404);
     }
 
     return createSuccessResponse(updatedTodo);
   } catch (error) {
-    console.error(`PUT /api/todos/${params.id} error:`, error);
+    console.error(`PUT /api/todos/${id} error:`, error);
     return createErrorResponse(error);
   }
 }
@@ -108,22 +110,23 @@ export async function PUT(
 // DELETE /api/todos/[id] - Delete a todo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const deleted = await deleteTodo(params.id);
+    const deleted = await deleteTodo(id);
     
     if (!deleted) {
       return createErrorResponse({
         message: 'Todo not found',
         code: 'NOT_FOUND',
-        details: { id: params.id },
+        details: { id },
       }, 404);
     }
 
-    return createSuccessResponse({ message: 'Todo deleted successfully', id: params.id });
+    return createSuccessResponse({ message: 'Todo deleted successfully', id });
   } catch (error) {
-    console.error(`DELETE /api/todos/${params.id} error:`, error);
+    console.error(`DELETE /api/todos/${id} error:`, error);
     return createErrorResponse(error);
   }
 }
