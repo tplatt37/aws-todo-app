@@ -26,7 +26,7 @@ export default function Footer() {
         } else {
           setError('Failed to fetch system information');
         }
-      } catch (err) {
+      } catch {
         setError('Error connecting to server');
       } finally {
         setLoading(false);

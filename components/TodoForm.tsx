@@ -3,9 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import ErrorMessage from './ErrorMessage';
+import { CreateTodoInput, Priority, Status, TodoItem, UpdateTodoInput } from '@/lib/types';
 
-import { TodoItem, Priority, Status, CreateTodoInput, UpdateTodoInput } from '@/lib/types';
+import ErrorMessage from './ErrorMessage';
 
 
 interface TodoFormProps {
@@ -70,7 +70,7 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
           value={formData.description}
           onChange={handleChange}
           className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-          placeholder="Enter todo description..."
+          placeholder="Enter todo description&hellip;"
         />
       </div>
 

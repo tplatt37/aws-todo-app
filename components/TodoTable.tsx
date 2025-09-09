@@ -104,7 +104,7 @@ export default function TodoTable({ todos, onDelete }: TodoTableProps) {
   };
 
   return (
-    <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+    <div className="overflow-hidden shadow ring-1 ring-black/5 md:rounded-lg">
       <table className="min-w-full divide-y divide-gray-300">
         <thead className="bg-gray-50">
           <tr>
@@ -157,7 +157,7 @@ export default function TodoTable({ todos, onDelete }: TodoTableProps) {
           {sortedTodos.length === 0 ? (
             <tr>
               <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                No todos found. Click "Add Todo" to create your first todo item.
+                No todos found. Click &ldquo;Add Todo&rdquo; to create your first todo item.
               </td>
             </tr>
           ) : (
