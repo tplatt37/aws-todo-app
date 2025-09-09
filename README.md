@@ -2,6 +2,12 @@
 
 A simple, clean Multi-Page Application (MPA) for managing TODO items using Next.js, TypeScript, AWS DynamoDB, and S3.
 
+** WARNING ** 
+
+This is not a production quality application.   It is an example for teaching AWS Solution Architect students.  Therefore it has specifically been generated to be easy to understand and does not have robust considerations for security or privacy, etc.   You should not use this as the base for a production application 
+
+This application was generated using AI: Cline with Opus 4.1 and Sonnet 4.
+
 ## Features
 
 - ✅ **CRUD Operations**: Create, Read, Update, and Delete todo items
@@ -190,10 +196,6 @@ For production deployment:
 4. Implement authentication/authorization
 5. Set up monitoring and alerting
 6. Configure backup strategies for DynamoDB
-
-## License
-
-This project is a demonstration application for AWS services integration.
 
 ## Support
 
