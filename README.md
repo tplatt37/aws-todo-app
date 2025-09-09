@@ -2,9 +2,11 @@
 
 A simple, clean Multi-Page Application (MPA) for managing TODO items using Next.js, TypeScript, AWS DynamoDB, and S3.
 
+This simple app is used for teaching AWS Solution Architect students about the basics of running an application on AWS.
+
 ** WARNING ** 
 
-This is not a production quality application.   It is an example for teaching AWS Solution Architect students.  Therefore it has specifically been generated to be easy to understand and does not have robust considerations for security or privacy, etc.   You should not use this as the base for a production application 
+This is not a production quality application.   It is an example for teaching AWS Solution Architect students.  Therefore it has specifically been generated to be easy to understand and does not have robust considerations for security or privacy, etc.   You should not use this as the base for a production application.  Seriously, there's not even end user authentication.  If you deploy this to the cloud I recommend restricting access to your IP only via Security Group rule.
 
 This application was generated using AI: Cline with Opus 4.1 and Sonnet 4.
 
@@ -183,7 +185,7 @@ CSV includes: ID, Description, Due Date, Priority, Status, Created At, Updated A
 - Store AWS credentials securely (use IAM roles in production)
 - Never commit `.env.local` or AWS credentials to version control
 - Use least-privilege IAM policies
-- Consider implementing authentication for production use
+- Consider implementing authentication for production use or restricting access via Security Groups.
 - Enable AWS CloudTrail for audit logging
 
 ## Production Deployment
