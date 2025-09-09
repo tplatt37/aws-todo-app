@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { TodoItem, Priority, Status } from '@/lib/types';
+import { useState } from 'react';
+
 import ErrorMessage from './ErrorMessage';
+
+import { TodoItem, Priority, Status, CreateTodoInput, UpdateTodoInput } from '@/lib/types';
+
 
 interface TodoFormProps {
   initialData?: Partial<TodoItem>;
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: CreateTodoInput | UpdateTodoInput) => Promise<void>;
   submitLabel: string;
 }
 
@@ -35,10 +38,10 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
         dueDate: new Date(formData.dueDate).toISOString(),
       };
       
-      await onSubmit(submitData);
+      await onSubmit(submitData as CreateTodoInput | UpdateTodoInput);
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
   };
@@ -52,7 +55,7 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-lg bg-white p-6 shadow">
       {error && <ErrorMessage error={error} onDismiss={() => setError(null)} />}
       
       <div>
@@ -66,7 +69,7 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
           required
           value={formData.description}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           placeholder="Enter todo description..."
         />
       </div>
@@ -82,7 +85,7 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
           required
           value={formData.dueDate}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
       </div>
 
@@ -95,7 +98,7 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
           name="priority"
           value={formData.priority}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         >
           <option value="High">High</option>
           <option value="Medium">Medium</option>
@@ -112,7 +115,7 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
           name="status"
           value={formData.status}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         >
           <option value="Not Started">Not Started</option>
           <option value="In Progress">In Progress</option>
@@ -125,14 +128,14 @@ export default function TodoForm({ initialData, onSubmit, submitLabel }: TodoFor
         <button
           type="button"
           onClick={() => router.push('/')}
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? 'Saving...' : submitLabel}
         </button>

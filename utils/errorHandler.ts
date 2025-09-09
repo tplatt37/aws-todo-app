@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { ApiError, ApiResponse } from '@/lib/types';
 
 export function createErrorResponse(error: ApiError | Error | unknown, statusCode: number = 500): NextResponse {
@@ -38,8 +39,13 @@ export function createSuccessResponse<T>(data: T, statusCode: number = 200): Nex
   return NextResponse.json(response, { status: statusCode });
 }
 
-function isApiError(error: any): error is ApiError {
-  return error && typeof error === 'object' && 'message' in error && 'code' in error;
+function isApiError(error: unknown): error is ApiError {
+  return !!(error && typeof error === 'object' && 'message' in error && 'code' in error);
+}
+
+// Type guard for error details
+function hasProperty<T extends string>(obj: unknown, prop: T): obj is Record<T, unknown> {
+  return typeof obj === 'object' && obj !== null && prop in obj;
 }
 
 // Client-side error formatting
@@ -47,16 +53,16 @@ export function formatErrorForDisplay(error: ApiError): string {
   let message = error.message;
 
   if (error.details && typeof error.details === 'object') {
-    if (error.details.hint) {
+    if (hasProperty(error.details, 'hint') && typeof error.details.hint === 'string') {
       message += `\n\nHint: ${error.details.hint}`;
     }
-    if (error.details.tableName) {
+    if (hasProperty(error.details, 'tableName') && typeof error.details.tableName === 'string') {
       message += `\n\nTable: ${error.details.tableName}`;
     }
-    if (error.details.bucketName) {
+    if (hasProperty(error.details, 'bucketName') && typeof error.details.bucketName === 'string') {
       message += `\n\nBucket: ${error.details.bucketName}`;
     }
-    if (error.details.region) {
+    if (hasProperty(error.details, 'region') && typeof error.details.region === 'string') {
       message += `\n\nRegion: ${error.details.region}`;
     }
   }

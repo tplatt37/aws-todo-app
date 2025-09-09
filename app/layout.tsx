@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+
 import './globals.css';
 import Footer from '@/components/Footer';
 
@@ -18,20 +19,20 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-          <header className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between items-center h-16">
+        <div className="flex min-h-screen flex-col bg-gray-50">
+          <header className="border-b bg-white shadow-sm">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="flex h-16 items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Todo List Manager</h1>
                 <nav className="flex space-x-4">
-                  <a href="/" className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  <a href="/" className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
                     Home
                   </a>
                 </nav>
               </div>
             </div>
           </header>
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
+          <main className="mx-auto max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
             {children}
           </main>
           <Footer />

@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
 import { ApiError } from './types';
 
 // Initialize S3 Client
@@ -14,59 +15,77 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'todo-exports-dev';
 
 // Error handler for S3 operations
-export function handleS3Error(error: any): ApiError {
+export function handleS3Error(error: unknown): ApiError {
   console.error('S3 Error:', error);
   
   const apiError: ApiError = {
     message: 'File export operation failed',
-    code: error.name || 'UNKNOWN_ERROR',
+    code: 'UNKNOWN_ERROR',
     details: {},
   };
 
-  // Handle specific AWS S3 errors
-  if (error.name === 'NoSuchBucket') {
-    apiError.message = `S3 bucket '${BUCKET_NAME}' not found. Please ensure the bucket exists and is accessible.`;
-    apiError.details = {
-      bucketName: BUCKET_NAME,
-      region: process.env.AWS_REGION || 'us-east-1',
-    };
-  } else if (error.name === 'AccessDenied' || error.name === 'Forbidden') {
-    apiError.message = 'Access denied to S3 bucket. Please check permissions.';
-    apiError.details = {
-      bucketName: BUCKET_NAME,
-      hint: 'Verify the IAM user has PutObject permission for this bucket',
-    };
-  } else if (error.name === 'InvalidBucketName') {
-    apiError.message = 'Invalid S3 bucket name configuration';
-    apiError.details = {
-      bucketName: BUCKET_NAME,
-    };
-  } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
-    apiError.message = 'Unable to connect to AWS S3. Please check your internet connection.';
-    apiError.details = {
-      endpoint: error.endpoint || 's3.amazonaws.com',
-    };
-  } else if (error.name === 'UnrecognizedClientException' || error.name === 'InvalidUserID.NotFound') {
-    apiError.message = 'Authentication failed. Please check AWS credentials.';
-    apiError.details = {
-      hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
-    };
-  } else if (error.$metadata) {
-    // Generic AWS SDK error
-    apiError.message = error.message || 'AWS S3 service error occurred';
-    apiError.details = {
-      requestId: error.$metadata.requestId,
-      httpStatusCode: error.$metadata.httpStatusCode,
-    };
-  } else {
-    // Unknown error
-    apiError.message = error.message || 'An unexpected error occurred during export';
-    apiError.details = error.toString();
-  }
+  // Type guard for AWS SDK errors
+  const isAwsError = (err: unknown): err is { name: string; message?: string; code?: string; $metadata?: { requestId?: string; httpStatusCode?: number }; endpoint?: string; stack?: string } => {
+    return typeof err === 'object' && err !== null && 'name' in err;
+  };
 
-  // Include stack trace in development
-  if (process.env.NODE_ENV === 'development') {
-    apiError.stack = error.stack;
+  if (isAwsError(error)) {
+    apiError.code = error.name;
+
+    // Handle specific AWS S3 errors
+    if (error.name === 'NoSuchBucket') {
+      apiError.message = `S3 bucket '${BUCKET_NAME}' not found. Please ensure the bucket exists and is accessible.`;
+      apiError.details = {
+        bucketName: BUCKET_NAME,
+        region: process.env.AWS_REGION || 'us-east-1',
+      };
+    } else if (error.name === 'AccessDenied' || error.name === 'Forbidden') {
+      apiError.message = 'Access denied to S3 bucket. Please check permissions.';
+      apiError.details = {
+        bucketName: BUCKET_NAME,
+        hint: 'Verify the IAM user has PutObject permission for this bucket',
+      };
+    } else if (error.name === 'InvalidBucketName') {
+      apiError.message = 'Invalid S3 bucket name configuration';
+      apiError.details = {
+        bucketName: BUCKET_NAME,
+      };
+    } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
+      apiError.message = 'Unable to connect to AWS S3. Please check your internet connection.';
+      apiError.details = {
+        endpoint: error.endpoint || 's3.amazonaws.com',
+      };
+    } else if (error.name === 'UnrecognizedClientException' || error.name === 'InvalidUserID.NotFound') {
+      apiError.message = 'Authentication failed. Please check AWS credentials.';
+      apiError.details = {
+        hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
+      };
+    } else if (error.$metadata) {
+      // Generic AWS SDK error
+      apiError.message = error.message || 'AWS S3 service error occurred';
+      apiError.details = {
+        requestId: error.$metadata.requestId,
+        httpStatusCode: error.$metadata.httpStatusCode,
+      };
+    } else {
+      // Other AWS errors
+      apiError.message = error.message || 'AWS S3 service error occurred';
+    }
+
+    // Include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      apiError.stack = error.stack;
+    }
+  } else if (error instanceof Error) {
+    apiError.message = error.message;
+    apiError.details = error.toString();
+    if (process.env.NODE_ENV === 'development') {
+      apiError.stack = error.stack;
+    }
+  } else {
+    // Unknown error type
+    apiError.message = 'An unexpected error occurred during export';
+    apiError.details = String(error);
   }
 
   return apiError;

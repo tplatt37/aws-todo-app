@@ -37,9 +37,9 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="bg-gray-100 border-t border-gray-200 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600">
+    <footer className="mt-auto border-t border-gray-200 bg-gray-100">
+      <div className="mx-auto max-w-7xl p-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center space-x-4">
             <span className="font-medium text-gray-700">System Info:</span>
             {loading ? (
@@ -60,7 +60,7 @@ export default function Footer() {
               </div>
             ) : null}
           </div>
-          <div className="mt-2 sm:mt-0 text-gray-500">
+          <div className="mt-2 text-gray-500 sm:mt-0">
             AWS Todo App Demo
           </div>
         </div>

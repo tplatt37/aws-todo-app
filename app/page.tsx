@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TodoItem, ApiResponse, ApiError } from '@/lib/types';
-import TodoTable from '@/components/TodoTable';
+
+import ErrorMessage from '@/components/ErrorMessage';
 import ExportButton from '@/components/ExportButton';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import ErrorMessage from '@/components/ErrorMessage';
+import TodoTable from '@/components/TodoTable';
+import { TodoItem, ApiResponse, ApiError } from '@/lib/types';
 
 export default function HomePage() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -23,9 +24,9 @@ export default function HomePage() {
       }
       
       setTodos(data.data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching todos:', err);
-      setError(err);
+      setError(err instanceof Error ? { message: err.message } : { message: 'Failed to fetch todos' });
     } finally {
       setLoading(false);
     }
@@ -50,9 +51,9 @@ export default function HomePage() {
       
       // Remove the deleted todo from the list
       setTodos(todos.filter(todo => todo.id !== id));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting todo:', err);
-      setError(err);
+      setError(err instanceof Error ? { message: err.message } : { message: 'Failed to delete todo' });
     }
   };
 
@@ -71,20 +72,20 @@ export default function HomePage() {
     <div className="space-y-6">
       <div className="sm:flex sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+          <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl">
             Todo List
           </h2>
           <p className="mt-1 text-sm text-gray-500">
             Manage your tasks and stay organized
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
           <div className="flex items-center space-x-3">
             <a
               href="/add"
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
-              <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="mr-2 size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
               Add Todo
@@ -101,12 +102,12 @@ export default function HomePage() {
         />
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="rounded-lg bg-white shadow">
         <TodoTable todos={todos} onDelete={handleDelete} />
       </div>
 
       {todos.length > 0 && (
-        <div className="text-sm text-gray-500 text-center">
+        <div className="text-center text-sm text-gray-500">
           Showing {todos.length} todo{todos.length !== 1 ? 's' : ''}
         </div>
       )}

@@ -1,10 +1,10 @@
 'use client';
 
-import { ApiResponse } from '@/lib/types';
 import TodoForm from '@/components/TodoForm';
+import { ApiResponse, CreateTodoInput, UpdateTodoInput } from '@/lib/types';
 
 export default function AddTodoPage() {
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: CreateTodoInput | UpdateTodoInput) => {
     const response = await fetch('/api/todos', {
       method: 'POST',
       headers: {
@@ -21,7 +21,7 @@ export default function AddTodoPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Add New Todo</h2>
         <p className="mt-1 text-sm text-gray-600">

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { TodoItem, ApiResponse } from '@/lib/types';
-import TodoForm from '@/components/TodoForm';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { useState, useEffect } from 'react';
+
 import ErrorMessage from '@/components/ErrorMessage';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import TodoForm from '@/components/TodoForm';
+import { TodoItem, ApiResponse, CreateTodoInput, UpdateTodoInput } from '@/lib/types';
 
 export default function EditTodoPage() {
   const params = useParams();
@@ -26,8 +27,8 @@ export default function EditTodoPage() {
         }
         
         setTodo(data.data || null);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load todo');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load todo');
       } finally {
         setLoading(false);
       }
@@ -38,7 +39,7 @@ export default function EditTodoPage() {
     }
   }, [id]);
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: CreateTodoInput | UpdateTodoInput) => {
     const response = await fetch(`/api/todos/${id}`, {
       method: 'PUT',
       headers: {
@@ -60,7 +61,7 @@ export default function EditTodoPage() {
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-2xl">
         <ErrorMessage error={error} />
         <div className="mt-4">
           <a href="/" className="text-blue-600 hover:text-blue-800">
@@ -73,7 +74,7 @@ export default function EditTodoPage() {
 
   if (!todo) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="mx-auto max-w-2xl">
         <ErrorMessage error="Todo not found" />
         <div className="mt-4">
           <a href="/" className="text-blue-600 hover:text-blue-800">
@@ -85,7 +86,7 @@ export default function EditTodoPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Edit Todo</h2>
         <p className="mt-1 text-sm text-gray-600">

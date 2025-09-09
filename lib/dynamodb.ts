@@ -1,7 +1,8 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { TodoItem, CreateTodoInput, UpdateTodoInput, ApiError } from './types';
 import { v4 as uuidv4 } from 'uuid';
+
+import { TodoItem, CreateTodoInput, UpdateTodoInput, ApiError } from './types';
 
 // Initialize DynamoDB Client
 const client = new DynamoDBClient({
@@ -18,53 +19,71 @@ const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'TodoItems-dev';
 
 // Error handler for DynamoDB operations
-export function handleDynamoDBError(error: any): ApiError {
+export function handleDynamoDBError(error: unknown): ApiError {
   console.error('DynamoDB Error:', error);
   
   const apiError: ApiError = {
     message: 'Database operation failed',
-    code: error.name || 'UNKNOWN_ERROR',
+    code: 'UNKNOWN_ERROR',
     details: {},
   };
 
-  // Handle specific AWS errors
-  if (error.name === 'ResourceNotFoundException') {
-    apiError.message = `DynamoDB table '${TABLE_NAME}' not found. Please ensure the table exists and is accessible.`;
-    apiError.details = {
-      tableName: TABLE_NAME,
-      region: process.env.AWS_REGION || 'us-east-1',
-    };
-  } else if (error.name === 'ValidationException') {
-    apiError.message = 'Invalid data provided for database operation';
-    apiError.details = error.message;
-  } else if (error.name === 'ProvisionedThroughputExceededException') {
-    apiError.message = 'Database request limit exceeded. Please try again later.';
-  } else if (error.name === 'AccessDeniedException' || error.name === 'UnrecognizedClientException') {
-    apiError.message = 'Authentication failed. Please check AWS credentials.';
-    apiError.details = {
-      hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
-    };
-  } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
-    apiError.message = 'Unable to connect to AWS DynamoDB. Please check your internet connection.';
-    apiError.details = {
-      endpoint: error.endpoint || 'dynamodb.amazonaws.com',
-    };
-  } else if (error.$metadata) {
-    // Generic AWS SDK error
-    apiError.message = error.message || 'AWS service error occurred';
-    apiError.details = {
-      requestId: error.$metadata.requestId,
-      httpStatusCode: error.$metadata.httpStatusCode,
-    };
-  } else {
-    // Unknown error
-    apiError.message = error.message || 'An unexpected error occurred';
-    apiError.details = error.toString();
-  }
+  // Type guard for AWS SDK errors
+  const isAwsError = (err: unknown): err is { name: string; message?: string; code?: string; $metadata?: { requestId?: string; httpStatusCode?: number }; endpoint?: string; stack?: string } => {
+    return typeof err === 'object' && err !== null && 'name' in err;
+  };
 
-  // Include stack trace in development
-  if (process.env.NODE_ENV === 'development') {
-    apiError.stack = error.stack;
+  if (isAwsError(error)) {
+    apiError.code = error.name;
+
+    // Handle specific AWS errors
+    if (error.name === 'ResourceNotFoundException') {
+      apiError.message = `DynamoDB table '${TABLE_NAME}' not found. Please ensure the table exists and is accessible.`;
+      apiError.details = {
+        tableName: TABLE_NAME,
+        region: process.env.AWS_REGION || 'us-east-1',
+      };
+    } else if (error.name === 'ValidationException') {
+      apiError.message = 'Invalid data provided for database operation';
+      apiError.details = error.message || 'Validation failed';
+    } else if (error.name === 'ProvisionedThroughputExceededException') {
+      apiError.message = 'Database request limit exceeded. Please try again later.';
+    } else if (error.name === 'AccessDeniedException' || error.name === 'UnrecognizedClientException') {
+      apiError.message = 'Authentication failed. Please check AWS credentials.';
+      apiError.details = {
+        hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
+      };
+    } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
+      apiError.message = 'Unable to connect to AWS DynamoDB. Please check your internet connection.';
+      apiError.details = {
+        endpoint: error.endpoint || 'dynamodb.amazonaws.com',
+      };
+    } else if (error.$metadata) {
+      // Generic AWS SDK error
+      apiError.message = error.message || 'AWS service error occurred';
+      apiError.details = {
+        requestId: error.$metadata.requestId,
+        httpStatusCode: error.$metadata.httpStatusCode,
+      };
+    } else {
+      // Other AWS errors
+      apiError.message = error.message || 'AWS service error occurred';
+    }
+
+    // Include stack trace in development
+    if (process.env.NODE_ENV === 'development') {
+      apiError.stack = error.stack;
+    }
+  } else if (error instanceof Error) {
+    apiError.message = error.message;
+    apiError.details = error.toString();
+    if (process.env.NODE_ENV === 'development') {
+      apiError.stack = error.stack;
+    }
+  } else {
+    // Unknown error type
+    apiError.message = 'An unexpected error occurred';
+    apiError.details = String(error);
   }
 
   return apiError;
@@ -129,7 +148,7 @@ export async function updateTodo(id: string, input: UpdateTodoInput): Promise<To
     // Build update expression dynamically
     const updateExpressionParts: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};
-    const expressionAttributeValues: Record<string, any> = {};
+    const expressionAttributeValues: Record<string, string | number | boolean> = {};
 
     // Always update the updatedAt timestamp
     updateExpressionParts.push('#updatedAt = :updatedAt');
@@ -173,8 +192,8 @@ export async function updateTodo(id: string, input: UpdateTodoInput): Promise<To
 
     const response = await docClient.send(command);
     return response.Attributes as TodoItem || null;
-  } catch (error: any) {
-    if (error.name === 'ConditionalCheckFailedException') {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
       return null; // Item doesn't exist
     }
     throw handleDynamoDBError(error);
@@ -192,8 +211,8 @@ export async function deleteTodo(id: string): Promise<boolean> {
 
     await docClient.send(command);
     return true;
-  } catch (error: any) {
-    if (error.name === 'ConditionalCheckFailedException') {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
       return false; // Item doesn't exist
     }
     throw handleDynamoDBError(error);
