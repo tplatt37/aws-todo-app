@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import Link from 'next/link';
 
 import './globals.css';
 import Footer from '@/components/Footer';
@@ -25,9 +26,9 @@ export default function RootLayout({
               <div className="flex h-16 items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Todo List Manager</h1>
                 <nav className="flex space-x-4">
-                  <a href="/" className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                  <Link href="/" className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
                     Home
-                  </a>
+                  </Link>
                 </nav>
               </div>
             </div>

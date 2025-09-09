@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -64,9 +65,9 @@ export default function EditTodoPage() {
       <div className="mx-auto max-w-2xl">
         <ErrorMessage error={error} />
         <div className="mt-4">
-          <a href="/" className="text-blue-600 hover:text-blue-800">
+          <Link href="/" className="text-blue-600 hover:text-blue-800">
             ← Back to Todo List
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -77,9 +78,9 @@ export default function EditTodoPage() {
       <div className="mx-auto max-w-2xl">
         <ErrorMessage error="Todo not found" />
         <div className="mt-4">
-          <a href="/" className="text-blue-600 hover:text-blue-800">
+          <Link href="/" className="text-blue-600 hover:text-blue-800">
             ← Back to Todo List
-          </a>
+          </Link>
         </div>
       </div>
     );
