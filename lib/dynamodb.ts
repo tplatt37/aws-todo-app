@@ -1,0 +1,201 @@
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { TodoItem, CreateTodoInput, UpdateTodoInput, ApiError } from './types';
+import { v4 as uuidv4 } from 'uuid';
+
+// Initialize DynamoDB Client
+const client = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  } : undefined,
+});
+
+// Create Document Client
+const docClient = DynamoDBDocumentClient.from(client);
+
+const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'TodoItems-dev';
+
+// Error handler for DynamoDB operations
+export function handleDynamoDBError(error: any): ApiError {
+  console.error('DynamoDB Error:', error);
+  
+  const apiError: ApiError = {
+    message: 'Database operation failed',
+    code: error.name || 'UNKNOWN_ERROR',
+    details: {},
+  };
+
+  // Handle specific AWS errors
+  if (error.name === 'ResourceNotFoundException') {
+    apiError.message = `DynamoDB table '${TABLE_NAME}' not found. Please ensure the table exists and is accessible.`;
+    apiError.details = {
+      tableName: TABLE_NAME,
+      region: process.env.AWS_REGION || 'us-east-1',
+    };
+  } else if (error.name === 'ValidationException') {
+    apiError.message = 'Invalid data provided for database operation';
+    apiError.details = error.message;
+  } else if (error.name === 'ProvisionedThroughputExceededException') {
+    apiError.message = 'Database request limit exceeded. Please try again later.';
+  } else if (error.name === 'AccessDeniedException' || error.name === 'UnrecognizedClientException') {
+    apiError.message = 'Authentication failed. Please check AWS credentials.';
+    apiError.details = {
+      hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
+    };
+  } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
+    apiError.message = 'Unable to connect to AWS DynamoDB. Please check your internet connection.';
+    apiError.details = {
+      endpoint: error.endpoint || 'dynamodb.amazonaws.com',
+    };
+  } else if (error.$metadata) {
+    // Generic AWS SDK error
+    apiError.message = error.message || 'AWS service error occurred';
+    apiError.details = {
+      requestId: error.$metadata.requestId,
+      httpStatusCode: error.$metadata.httpStatusCode,
+    };
+  } else {
+    // Unknown error
+    apiError.message = error.message || 'An unexpected error occurred';
+    apiError.details = error.toString();
+  }
+
+  // Include stack trace in development
+  if (process.env.NODE_ENV === 'development') {
+    apiError.stack = error.stack;
+  }
+
+  return apiError;
+}
+
+// Get all todos
+export async function getAllTodos(): Promise<TodoItem[]> {
+  try {
+    const command = new ScanCommand({
+      TableName: TABLE_NAME,
+    });
+
+    const response = await docClient.send(command);
+    return (response.Items as TodoItem[]) || [];
+  } catch (error) {
+    throw handleDynamoDBError(error);
+  }
+}
+
+// Get a single todo by ID
+export async function getTodoById(id: string): Promise<TodoItem | null> {
+  try {
+    const command = new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+    });
+
+    const response = await docClient.send(command);
+    return response.Item as TodoItem || null;
+  } catch (error) {
+    throw handleDynamoDBError(error);
+  }
+}
+
+// Create a new todo
+export async function createTodo(input: CreateTodoInput): Promise<TodoItem> {
+  try {
+    const now = new Date().toISOString();
+    const newTodo: TodoItem = {
+      id: uuidv4(),
+      ...input,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const command = new PutCommand({
+      TableName: TABLE_NAME,
+      Item: newTodo,
+      ConditionExpression: 'attribute_not_exists(id)',
+    });
+
+    await docClient.send(command);
+    return newTodo;
+  } catch (error) {
+    throw handleDynamoDBError(error);
+  }
+}
+
+// Update an existing todo
+export async function updateTodo(id: string, input: UpdateTodoInput): Promise<TodoItem | null> {
+  try {
+    // Build update expression dynamically
+    const updateExpressionParts: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {};
+    const expressionAttributeValues: Record<string, any> = {};
+
+    // Always update the updatedAt timestamp
+    updateExpressionParts.push('#updatedAt = :updatedAt');
+    expressionAttributeNames['#updatedAt'] = 'updatedAt';
+    expressionAttributeValues[':updatedAt'] = new Date().toISOString();
+
+    // Add other fields if provided
+    if (input.description !== undefined) {
+      updateExpressionParts.push('#description = :description');
+      expressionAttributeNames['#description'] = 'description';
+      expressionAttributeValues[':description'] = input.description;
+    }
+
+    if (input.dueDate !== undefined) {
+      updateExpressionParts.push('#dueDate = :dueDate');
+      expressionAttributeNames['#dueDate'] = 'dueDate';
+      expressionAttributeValues[':dueDate'] = input.dueDate;
+    }
+
+    if (input.priority !== undefined) {
+      updateExpressionParts.push('#priority = :priority');
+      expressionAttributeNames['#priority'] = 'priority';
+      expressionAttributeValues[':priority'] = input.priority;
+    }
+
+    if (input.status !== undefined) {
+      updateExpressionParts.push('#status = :status');
+      expressionAttributeNames['#status'] = 'status';
+      expressionAttributeValues[':status'] = input.status;
+    }
+
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+      UpdateExpression: `SET ${updateExpressionParts.join(', ')}`,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ConditionExpression: 'attribute_exists(id)',
+      ReturnValues: 'ALL_NEW',
+    });
+
+    const response = await docClient.send(command);
+    return response.Attributes as TodoItem || null;
+  } catch (error: any) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      return null; // Item doesn't exist
+    }
+    throw handleDynamoDBError(error);
+  }
+}
+
+// Delete a todo
+export async function deleteTodo(id: string): Promise<boolean> {
+  try {
+    const command = new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { id },
+      ConditionExpression: 'attribute_exists(id)',
+    });
+
+    await docClient.send(command);
+    return true;
+  } catch (error: any) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      return false; // Item doesn't exist
+    }
+    throw handleDynamoDBError(error);
+  }
+}

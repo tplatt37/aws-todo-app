@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Infrastructure for Todo List Application - DynamoDB Table and S3 Bucket'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: 'dev'
+    Description: Environment name (dev, staging, prod)
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  # DynamoDB Table for Todo Items
+  TodoItemsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'TodoItems-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
+  # S3 Bucket for CSV Exports
+  TodoExportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'todo-exports-${AWS::AccountId}-${Environment}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldExports
+            Status: Enabled
+            ExpirationInDays: 7
+            NoncurrentVersionExpirationInDays: 1
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
+  # IAM User for Application Access (Optional - for local development)
+  TodoAppUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Sub 'todo-app-user-${Environment}'
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
+  # IAM Policy for DynamoDB Access
+  TodoAppDynamoDBPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'TodoAppDynamoDBPolicy-${Environment}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:Scan
+              - dynamodb:Query
+              - dynamodb:DescribeTable
+            Resource:
+              - !GetAtt TodoItemsTable.Arn
+              - !Sub '${TodoItemsTable.Arn}/index/*'
+      Users:
+        - !Ref TodoAppUser
+
+  # IAM Policy for S3 Access
+  TodoAppS3Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'TodoAppS3Policy-${Environment}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:PutObjectAcl
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:DeleteObject
+            Resource:
+              - !Sub '${TodoExportsBucket.Arn}/*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !GetAtt TodoExportsBucket.Arn
+      Users:
+        - !Ref TodoAppUser
+
+  # Access Key for the IAM User (for local development)
+  TodoAppUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref TodoAppUser
+
+Outputs:
+  DynamoDBTableName:
+    Description: Name of the DynamoDB table
+    Value: !Ref TodoItemsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBTableName'
+
+  S3BucketName:
+    Description: Name of the S3 bucket for exports
+    Value: !Ref TodoExportsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3BucketName'
+
+  AccessKeyId:
+    Description: Access Key ID for the Todo App User
+    Value: !Ref TodoAppUserAccessKey
+    Export:
+      Name: !Sub '${AWS::StackName}-AccessKeyId'
+
+  SecretAccessKey:
+    Description: Secret Access Key for the Todo App User (SAVE THIS SECURELY!)
+    Value: !GetAtt TodoAppUserAccessKey.SecretAccessKey
+    Export:
+      Name: !Sub '${AWS::StackName}-SecretAccessKey'
+
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub '${AWS::StackName}-Region'
+
+  Instructions:
+    Description: Setup Instructions
+    Value: !Sub |
+      1. Save the AccessKeyId and SecretAccessKey securely
+      2. Create a .env.local file in your Next.js project with:
+         AWS_REGION=${AWS::Region}
+         AWS_ACCESS_KEY_ID=[AccessKeyId from outputs]
+         AWS_SECRET_ACCESS_KEY=[SecretAccessKey from outputs]
+         DYNAMODB_TABLE_NAME=${TodoItemsTable}
+         S3_BUCKET_NAME=${TodoExportsBucket}
