@@ -1,0 +1,22 @@
+#!/bin/bash
+# User Data script for Next.js deployment
+
+# Install Node.js LTS and npm
+curl -fsSL https://rpm.nodesource.com/setup_lts.x | bash -
+dnf install -y nodejs
+
+# Create and navigate to app directory
+mkdir -p /opt/nextjs-app
+cd /opt/nextjs-app
+
+# Download and extract
+aws s3 cp s3://REPLACE_THIS_BUCKET_NAME/todo.zip ./todo.zip
+unzip todo.zip
+
+# Install dependencies for Linux platform
+npm install --production
+
+# Start the Next.js application
+nohup npm start > /var/log/nextjs-app.log 2>&1 &
+
+echo "Next.js application started. Check logs at: /var/log/nextjs-app.log"
