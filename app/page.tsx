@@ -20,13 +20,18 @@ export default function HomePage() {
       const data: ApiResponse<TodoItem[]> = await response.json();
       
       if (!data.success) {
-        throw data.error || new Error('Failed to fetch todos');
+        setError(data.error || { message: 'Failed to fetch todos', code: 'FETCH_ERROR' });
+        return;
       }
       
       setTodos(data.data || []);
     } catch (err: unknown) {
       console.error('Error fetching todos:', err);
-      setError(err instanceof Error ? { message: err.message } : { message: 'Failed to fetch todos' });
+      if (err && typeof err === 'object' && 'message' in err) {
+        setError(err as ApiError);
+      } else {
+        setError({ message: 'Failed to fetch todos', code: 'FETCH_ERROR' });
+      }
     } finally {
       setLoading(false);
     }
@@ -46,22 +51,24 @@ export default function HomePage() {
       const data: ApiResponse = await response.json();
       
       if (!data.success) {
-        throw data.error || new Error('Failed to delete todo');
+        setError(data.error || { message: 'Failed to delete todo', code: 'DELETE_ERROR' });
+        return;
       }
       
       // Remove the deleted todo from the list
       setTodos(todos.filter(todo => todo.id !== id));
     } catch (err: unknown) {
       console.error('Error deleting todo:', err);
-      setError(err instanceof Error ? { message: err.message } : { message: 'Failed to delete todo' });
+      if (err && typeof err === 'object' && 'message' in err) {
+        setError(err as ApiError);
+      } else {
+        setError({ message: 'Failed to delete todo', code: 'DELETE_ERROR' });
+      }
     }
   };
 
-  const handleExportError = (errorMessage: string) => {
-    setError({
-      message: errorMessage,
-      code: 'EXPORT_ERROR',
-    });
+  const handleExportError = (error: ApiError) => {
+    setError(error);
   };
 
   if (loading) {

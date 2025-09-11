@@ -50,25 +50,12 @@ function hasProperty<T extends string>(obj: unknown, prop: T): obj is Record<T, 
 
 // Client-side error formatting
 export function formatErrorForDisplay(error: ApiError): string {
+  // Display the raw AWS error message exactly as AWS produced it
   let message = error.message;
 
+  // If we have raw AWS error details, display them as JSON for students to see the complete structure
   if (error.details && typeof error.details === 'object') {
-    if (hasProperty(error.details, 'hint') && typeof error.details.hint === 'string') {
-      message += `\n\nHint: ${error.details.hint}`;
-    }
-    if (hasProperty(error.details, 'tableName') && typeof error.details.tableName === 'string') {
-      message += `\n\nTable: ${error.details.tableName}`;
-    }
-    if (hasProperty(error.details, 'bucketName') && typeof error.details.bucketName === 'string') {
-      message += `\n\nBucket: ${error.details.bucketName}`;
-    }
-    if (hasProperty(error.details, 'region') && typeof error.details.region === 'string') {
-      message += `\n\nRegion: ${error.details.region}`;
-    }
-  }
-
-  if (process.env.NODE_ENV === 'development' && error.stack) {
-    message += `\n\nStack Trace:\n${error.stack}`;
+    message += `\n\nRaw AWS Error Details:\n${JSON.stringify(error.details, null, 2)}`;
   }
 
   return message;

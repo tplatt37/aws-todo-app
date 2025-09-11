@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TodoForm from '@/components/TodoForm';
-import { ApiResponse, CreateTodoInput, TodoItem, UpdateTodoInput } from '@/lib/types';
+import { ApiError, ApiResponse, CreateTodoInput, TodoItem, UpdateTodoInput } from '@/lib/types';
 
 export default function EditTodoPage() {
   const params = useParams();
@@ -15,7 +15,7 @@ export default function EditTodoPage() {
   
   const [todo, setTodo] = useState<TodoItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
     const fetchTodo = async () => {
@@ -24,12 +24,17 @@ export default function EditTodoPage() {
         const data: ApiResponse<TodoItem> = await response.json();
         
         if (!data.success) {
-          throw new Error(data.error?.message || 'Failed to fetch todo');
+          setError(data.error || { message: 'Failed to fetch todo', code: 'FETCH_ERROR' });
+          return;
         }
         
         setTodo(data.data || null);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load todo');
+        if (err && typeof err === 'object' && 'message' in err) {
+          setError(err as ApiError);
+        } else {
+          setError({ message: 'Failed to load todo', code: 'FETCH_ERROR' });
+        }
       } finally {
         setLoading(false);
       }
@@ -52,7 +57,7 @@ export default function EditTodoPage() {
     const result: ApiResponse = await response.json();
     
     if (!result.success) {
-      throw new Error(result.error?.message || 'Failed to update todo');
+      throw result.error || { message: 'Failed to update todo', code: 'UPDATE_ERROR' };
     }
   };
 

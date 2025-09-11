@@ -16,7 +16,7 @@ export default function AddTodoPage() {
     const result: ApiResponse = await response.json();
     
     if (!result.success) {
-      throw new Error(result.error?.message || 'Failed to create todo');
+      throw result.error || { message: 'Failed to create todo', code: 'CREATE_ERROR' };
     }
   };
 

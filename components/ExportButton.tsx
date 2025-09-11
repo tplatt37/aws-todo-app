@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 
-import { ApiResponse, ExportResponse } from '@/lib/types';
+import { ApiError, ApiResponse, ExportResponse } from '@/lib/types';
 
 interface ExportButtonProps {
-  onError: (error: string) => void;
+  onError: (error: ApiError) => void;
 }
 
 export default function ExportButton({ onError }: ExportButtonProps) {
@@ -24,7 +24,8 @@ export default function ExportButton({ onError }: ExportButtonProps) {
       const data: ApiResponse<ExportResponse> = await response.json();
       
       if (!data.success) {
-        throw new Error(data.error?.message || 'Export failed');
+        onError(data.error || { message: 'Export failed', code: 'EXPORT_ERROR' });
+        return;
       }
       
       if (data.data) {
@@ -33,7 +34,11 @@ export default function ExportButton({ onError }: ExportButtonProps) {
         window.open(data.data.downloadUrl, '_blank');
       }
     } catch (error: unknown) {
-      onError(error instanceof Error ? error.message : 'Failed to export todos');
+      if (error && typeof error === 'object' && 'message' in error) {
+        onError(error as ApiError);
+      } else {
+        onError({ message: 'Failed to export todos', code: 'EXPORT_ERROR' });
+      }
     } finally {
       setLoading(false);
     }

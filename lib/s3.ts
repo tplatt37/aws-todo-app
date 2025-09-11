@@ -30,47 +30,12 @@ export function handleS3Error(error: unknown): ApiError {
   };
 
   if (isAwsError(error)) {
+    // Pass through the raw AWS error exactly as AWS produced it
     apiError.code = error.name;
-
-    // Handle specific AWS S3 errors
-    if (error.name === 'NoSuchBucket') {
-      apiError.message = `S3 bucket '${BUCKET_NAME}' not found. Please ensure the bucket exists and is accessible.`;
-      apiError.details = {
-        bucketName: BUCKET_NAME,
-        region: process.env.AWS_REGION || 'us-east-1',
-      };
-    } else if (error.name === 'AccessDenied' || error.name === 'Forbidden') {
-      apiError.message = 'Access denied to S3 bucket. Please check permissions.';
-      apiError.details = {
-        bucketName: BUCKET_NAME,
-        hint: 'Verify the IAM user has PutObject permission for this bucket',
-      };
-    } else if (error.name === 'InvalidBucketName') {
-      apiError.message = 'Invalid S3 bucket name configuration';
-      apiError.details = {
-        bucketName: BUCKET_NAME,
-      };
-    } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
-      apiError.message = 'Unable to connect to AWS S3. Please check your internet connection.';
-      apiError.details = {
-        endpoint: error.endpoint || 's3.amazonaws.com',
-      };
-    } else if (error.name === 'UnrecognizedClientException' || error.name === 'InvalidUserID.NotFound') {
-      apiError.message = 'Authentication failed. Please check AWS credentials.';
-      apiError.details = {
-        hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
-      };
-    } else if (error.$metadata) {
-      // Generic AWS SDK error
-      apiError.message = error.message || 'AWS S3 service error occurred';
-      apiError.details = {
-        requestId: error.$metadata.requestId,
-        httpStatusCode: error.$metadata.httpStatusCode,
-      };
-    } else {
-      // Other AWS errors
-      apiError.message = error.message || 'AWS S3 service error occurred';
-    }
+    apiError.message = error.message || 'AWS service error occurred';
+    
+    // Store the complete raw error object for students to see
+    apiError.details = error;
 
     // Include stack trace in development
     if (process.env.NODE_ENV === 'development') {

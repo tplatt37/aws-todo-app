@@ -34,41 +34,12 @@ export function handleDynamoDBError(error: unknown): ApiError {
   };
 
   if (isAwsError(error)) {
+    // Pass through the raw AWS error exactly as AWS produced it
     apiError.code = error.name;
-
-    // Handle specific AWS errors
-    if (error.name === 'ResourceNotFoundException') {
-      apiError.message = `DynamoDB table '${TABLE_NAME}' not found. Please ensure the table exists and is accessible.`;
-      apiError.details = {
-        tableName: TABLE_NAME,
-        region: process.env.AWS_REGION || 'us-east-1',
-      };
-    } else if (error.name === 'ValidationException') {
-      apiError.message = 'Invalid data provided for database operation';
-      apiError.details = error.message || 'Validation failed';
-    } else if (error.name === 'ProvisionedThroughputExceededException') {
-      apiError.message = 'Database request limit exceeded. Please try again later.';
-    } else if (error.name === 'AccessDeniedException' || error.name === 'UnrecognizedClientException') {
-      apiError.message = 'Authentication failed. Please check AWS credentials.';
-      apiError.details = {
-        hint: 'Verify AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are correctly set',
-      };
-    } else if (error.name === 'NetworkingError' || error.code === 'ENOTFOUND') {
-      apiError.message = 'Unable to connect to AWS DynamoDB. Please check your internet connection.';
-      apiError.details = {
-        endpoint: error.endpoint || 'dynamodb.amazonaws.com',
-      };
-    } else if (error.$metadata) {
-      // Generic AWS SDK error
-      apiError.message = error.message || 'AWS service error occurred';
-      apiError.details = {
-        requestId: error.$metadata.requestId,
-        httpStatusCode: error.$metadata.httpStatusCode,
-      };
-    } else {
-      // Other AWS errors
-      apiError.message = error.message || 'AWS service error occurred';
-    }
+    apiError.message = error.message || 'AWS service error occurred';
+    
+    // Store the complete raw error object for students to see
+    apiError.details = error;
 
     // Include stack trace in development
     if (process.env.NODE_ENV === 'development') {
