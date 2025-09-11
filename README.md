@@ -94,6 +94,15 @@ npm run build
 npm run start
 ```
 
+## To Uninstall or Cleanup
+
+1. EMPTY the bucket created by the CloudFormation stack
+2. Delete the stack named "my-todo-app-stack":
+
+```
+aws cloudformation delete-stack --stack-name my-todo-app-stack
+```
+
 ## Application Structure
 
 ```

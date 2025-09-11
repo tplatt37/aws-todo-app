@@ -43,11 +43,6 @@ function isApiError(error: unknown): error is ApiError {
   return !!(error && typeof error === 'object' && 'message' in error && 'code' in error);
 }
 
-// Type guard for error details
-function hasProperty<T extends string>(obj: unknown, prop: T): obj is Record<T, unknown> {
-  return typeof obj === 'object' && obj !== null && prop in obj;
-}
-
 // Client-side error formatting
 export function formatErrorForDisplay(error: ApiError): string {
   // Display the raw AWS error message exactly as AWS produced it
