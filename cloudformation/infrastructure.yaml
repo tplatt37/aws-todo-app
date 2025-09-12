@@ -51,7 +51,7 @@ Resources:
             ExpirationInDays: 7
             NoncurrentVersionExpirationInDays: 1
       VersioningConfiguration:
-        Status: Enabled
+        Status: Suspended
       Tags:
         - Key: Application
           Value: TodoApp
