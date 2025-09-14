@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { FeatureFlags } from './types';
-import { fetchFeatureFlags } from './featureFlags';
+
+import { FeatureFlags, ApiResponse } from './types';
 
 interface FeatureFlagsContextType {
   featureFlags: FeatureFlags;
@@ -26,8 +26,15 @@ export function FeatureFlagsProvider({ children }: FeatureFlagsProviderProps) {
       try {
         setLoading(true);
         setError(null);
-        const flags = await fetchFeatureFlags();
-        setFeatureFlags(flags);
+        
+        const response = await fetch('/api/feature-flags');
+        const data: ApiResponse<FeatureFlags> = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.error?.message || 'Failed to fetch feature flags');
+        }
+        
+        setFeatureFlags(data.data || {});
       } catch (err) {
         console.error('Error loading feature flags:', err);
         setError(err instanceof Error ? err.message : 'Failed to load feature flags');

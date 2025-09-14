@@ -7,13 +7,11 @@ import ExportButton from '@/components/ExportButton';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TodoTable from '@/components/TodoTable';
 import { TodoItem, ApiResponse, ApiError } from '@/lib/types';
-import { useFeatureFlags } from '@/lib/FeatureFlagsContext';
 
 export default function HomePage() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
-  const { featureFlags, loading: flagsLoading } = useFeatureFlags();
 
   const fetchTodos = async () => {
     try {

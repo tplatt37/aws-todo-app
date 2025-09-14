@@ -1,22 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TodoForm from '@/components/TodoForm';
-import { ApiError, ApiResponse, CreateTodoInput, TodoItem, UpdateTodoInput } from '@/lib/types';
 import { useFeatureFlags } from '@/lib/FeatureFlagsContext';
+import { ApiError, ApiResponse, CreateTodoInput, TodoItem, UpdateTodoInput } from '@/lib/types';
 
 export default function EditTodoPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
-  const { featureFlags, loading: flagsLoading } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   
   const [todo, setTodo] = useState<TodoItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
   useEffect(() => {
@@ -60,6 +62,43 @@ export default function EditTodoPage() {
     
     if (!result.success) {
       throw result.error || { message: 'Failed to update todo', code: 'UPDATE_ERROR' };
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!todo) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${todo.description}"? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/todos/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result: ApiResponse = await response.json();
+      
+      if (!result.success) {
+        setError(result.error || { message: 'Failed to delete todo', code: 'DELETE_ERROR' });
+        return;
+      }
+
+      // Navigate back to home page after successful deletion
+      router.push('/');
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'message' in err) {
+        setError(err as ApiError);
+      } else {
+        setError({ message: 'Failed to delete todo', code: 'DELETE_ERROR' });
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -107,6 +146,21 @@ export default function EditTodoPage() {
         onSubmit={handleSubmit}
         submitLabel="Update Todo"
       />
+
+      {featureFlags.showDeleteFromEditPage && (
+        <div className="mt-6 border-t border-gray-200 pt-6">
+          <div className="flex justify-start">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deleting ? 'Deleting...' : 'Delete Todo'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
