@@ -2,8 +2,11 @@
 
 import TodoForm from '@/components/TodoForm';
 import { ApiResponse, CreateTodoInput, UpdateTodoInput } from '@/lib/types';
+import { useFeatureFlags } from '@/lib/FeatureFlagsContext';
 
 export default function AddTodoPage() {
+  const { featureFlags, loading: flagsLoading } = useFeatureFlags();
+
   const handleSubmit = async (data: CreateTodoInput | UpdateTodoInput) => {
     const response = await fetch('/api/todos', {
       method: 'POST',

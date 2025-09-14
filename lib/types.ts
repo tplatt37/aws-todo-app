@@ -55,3 +55,8 @@ export interface SortConfig {
   field: SortField;
   direction: SortDirection;
 }
+
+// Feature Flags Types
+export interface FeatureFlags {
+  [key: string]: boolean;
+}

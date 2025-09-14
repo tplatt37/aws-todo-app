@@ -8,10 +8,12 @@ import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import TodoForm from '@/components/TodoForm';
 import { ApiError, ApiResponse, CreateTodoInput, TodoItem, UpdateTodoInput } from '@/lib/types';
+import { useFeatureFlags } from '@/lib/FeatureFlagsContext';
 
 export default function EditTodoPage() {
   const params = useParams();
   const id = params.id as string;
+  const { featureFlags, loading: flagsLoading } = useFeatureFlags();
   
   const [todo, setTodo] = useState<TodoItem | null>(null);
   const [loading, setLoading] = useState(true);
