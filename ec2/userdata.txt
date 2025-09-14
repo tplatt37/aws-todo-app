@@ -24,7 +24,7 @@ mkdir -p /opt/nextjs-app
 cd /opt/nextjs-app
 
 # Download and extract
-aws s3 cp s3://todo-builds-$ACCOUNT_ID-dev/todo.zip ./todo.zip
+aws s3 cp s3://todo-builds-$AWS_ACCOUNT_ID-dev/todo.zip ./todo.zip
 unzip todo.zip
 
 # Install dependencies for Linux platform
