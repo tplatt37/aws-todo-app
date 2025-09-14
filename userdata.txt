@@ -1,30 +1,9 @@
 #!/bin/bash
-# User Data script for Next.js deployment
+# User Data script for To Do App deployment (NodeJs/Next.js)
 
 # Install Node.js LTS and npm
 curl -fsSL https://rpm.nodesource.com/setup_lts.x | bash -
 dnf install -y nodejs
-
-# Create and navigate to app directory
-mkdir -p /opt/nextjs-app
-cd /opt/nextjs-app
-
-
-#
-# IMPORTANT - you MUST update the bucket name below.
-# Your instructor will tell you what bucket name to use
-#
-
-
-# Download and extract
-aws s3 cp s3://REPLACE_BUCKET_NAME/todo.zip ./todo.zip
-unzip todo.zip
-
-
-
-
-# Install dependencies for Linux platform
-npm install --production
 
 # Retrieve REGION and AWS ACCOUNT ID automatically using IMDS v2
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" \
@@ -36,10 +15,22 @@ IDENTITY_DOCUMENT=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
 
 export AWS_REGION=$(echo "$IDENTITY_DOCUMENT" | grep -oP '"region"\s*:\s*"\K[^"]+')
 echo "AWS_REGION=$AWS_REGION"
+
 export AWS_ACCOUNT_ID=$(echo "$IDENTITY_DOCUMENT" | grep -oP '"accountId"\s*:\s*"\K[^"]+')
 echo "AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
+
+# Create and navigate to app directory
+mkdir -p /opt/nextjs-app
+cd /opt/nextjs-app
+
+# Download and extract
+aws s3 cp s3://todo-builds-$ACCOUNT_ID-dev/todo.zip ./todo.zip
+unzip todo.zip
+
+# Install dependencies for Linux platform
+npm install --production
 
 # Start the Next.js application
 AWS_REGION=$AWS_REGION DYNAMODB_TABLE_NAME=TodoItems-dev S3_BUCKET_NAME=todo-exports-$AWS_ACCOUNT_ID-dev nohup npm start > /var/log/nextjs-app.log 2>&1 &
 
-echo "Next.js application started. Check logs at: /var/log/nextjs-app.log"
+echo "To Do application started. Check logs at: /var/log/nextjs-app.log"

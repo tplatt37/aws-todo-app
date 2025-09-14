@@ -58,6 +58,34 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # S3 Bucket for Builds 
+  TodoBuildsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'todo-builds-${AWS::AccountId}-${Environment}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldBuilds
+            Status: Enabled
+            ExpirationInDays: 14
+            NoncurrentVersionExpirationInDays: 1
+      VersioningConfiguration:
+        Status: Suspended
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
   # IAM User for Application Access (Optional - for local development)
   TodoAppUser:
     Type: AWS::IAM::User
@@ -130,11 +158,17 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-DynamoDBTableName'
 
-  S3BucketName:
+  S3ExportsBucketName:
     Description: Name of the S3 bucket for exports
     Value: !Ref TodoExportsBucket
     Export:
-      Name: !Sub '${AWS::StackName}-S3BucketName'
+      Name: !Sub '${AWS::StackName}-Exports-S3BucketName'
+
+  S3BuildsBucketName:
+    Description: Name of the S3 bucket for holding application builds
+    Value: !Ref TodoBuildsBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-Builds-S3BucketName'
 
   AccessKeyId:
     Description: Access Key ID for the Todo App User

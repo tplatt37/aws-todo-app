@@ -8,7 +8,7 @@ This simple app is used for teaching AWS Solution Architect students about the b
 
 This is not a production quality application.   It is an example for teaching AWS Solution Architect students.  Therefore it has specifically been generated to be easy to understand and does not have robust considerations for security or privacy, etc.   You should not use this as the base for a production application.  Seriously, there's not even end user authentication.  If you deploy this to the cloud I recommend restricting access to your IP only via Security Group rule.
 
-This application was generated using AI: Cline with Opus 4.1 and Sonnet 4.
+This application was generated and is maintained using AI: VS Code with Cline using Anthropic Opus 4.1 and Sonnet 4.
 
 ## Features
 
