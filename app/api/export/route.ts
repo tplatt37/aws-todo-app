@@ -1,3 +1,5 @@
+import { setTimeout } from 'timers/promises';
+
 import { getAllTodos } from '@/lib/dynamodb';
 import { uploadCSVAndGetSignedUrl } from '@/lib/s3';
 import { ExportResponse } from '@/lib/types';
@@ -18,6 +20,12 @@ export async function POST() {
           hint: 'Add some todos before exporting',
         },
       }, 400);
+    }
+
+    // Add configurable delay to simulate slow processing
+    const delaySeconds = parseInt(process.env.EXPORT_DELAY_SECONDS || '0', 10);
+    if (delaySeconds > 0) {
+      await setTimeout(delaySeconds * 1000);
     }
 
     // Generate CSV content

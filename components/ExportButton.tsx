@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 import { ApiError, ApiResponse, ExportResponse } from '@/lib/types';
 
+import LoadingSpinner from './LoadingSpinner';
+
 interface ExportButtonProps {
   onError: (error: ApiError) => void;
 }
@@ -43,6 +45,10 @@ export default function ExportButton({ onError }: ExportButtonProps) {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <LoadingSpinner message="Processing export..." />;
+  }
 
   return (
     <div className="flex items-center space-x-4">
