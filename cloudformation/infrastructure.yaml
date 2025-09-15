@@ -135,17 +135,23 @@ Resources:
     Type: AWS::IAM::User
     Properties:
       UserName: !Sub 'todo-app-user-${Environment}'
+      ManagedPolicyArns:
+        - !Ref TodoAppDynamoDBManagedPolicy
+        - !Ref TodoAppS3ManagedPolicy
+        - !Ref TodoAppSNSManagedPolicy
+        - !Ref TodoAppSQSManagedPolicy
       Tags:
         - Key: Application
           Value: TodoApp
         - Key: Environment
           Value: !Ref Environment
 
-  # IAM Policy for DynamoDB Access
-  TodoAppDynamoDBPolicy:
-    Type: AWS::IAM::Policy
+  # IAM Managed Policy for DynamoDB Access
+  TodoAppDynamoDBManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: !Sub 'TodoAppDynamoDBPolicy-${Environment}'
+      ManagedPolicyName: !Sub 'TodoApp-DynamoDB-Policy-${Environment}'
+      Description: 'Managed policy for DynamoDB access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -161,14 +167,13 @@ Resources:
             Resource:
               - !GetAtt TodoItemsTable.Arn
               - !Sub '${TodoItemsTable.Arn}/index/*'
-      Users:
-        - !Ref TodoAppUser
 
-  # IAM Policy for S3 Access
-  TodoAppS3Policy:
-    Type: AWS::IAM::Policy
+  # IAM Managed Policy for S3 Access
+  TodoAppS3ManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: !Sub 'TodoAppS3Policy-${Environment}'
+      ManagedPolicyName: !Sub 'TodoApp-S3-Policy-${Environment}'
+      Description: 'Managed policy for S3 access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -186,14 +191,13 @@ Resources:
               - s3:ListBucket
             Resource:
               - !GetAtt TodoExportsBucket.Arn
-      Users:
-        - !Ref TodoAppUser
 
-  # IAM Policy for SNS Access
-  TodoAppSNSPolicy:
-    Type: AWS::IAM::Policy
+  # IAM Managed Policy for SNS Access
+  TodoAppSNSManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: !Sub 'TodoAppSNSPolicy-${Environment}'
+      ManagedPolicyName: !Sub 'TodoApp-SNS-Policy-${Environment}'
+      Description: 'Managed policy for SNS access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -202,14 +206,13 @@ Resources:
               - sns:Publish
             Resource:
               - !Ref TodoNotificationsTopic
-      Users:
-        - !Ref TodoAppUser
 
-  # IAM Policy for SQS Access
-  TodoAppSQSPolicy:
-    Type: AWS::IAM::Policy
+  # IAM Managed Policy for SQS Access
+  TodoAppSQSManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: !Sub 'TodoAppSQSPolicy-${Environment}'
+      ManagedPolicyName: !Sub 'TodoApp-SQS-Policy-${Environment}'
+      Description: 'Managed policy for SQS access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -219,8 +222,6 @@ Resources:
               - sqs:GetQueueAttributes
             Resource:
               - !GetAtt TodoExportsQueue.Arn
-      Users:
-        - !Ref TodoAppUser
 
   # Access Key for the IAM User (for local development)
   TodoAppUserAccessKey:
@@ -270,6 +271,30 @@ Outputs:
     Value: !GetAtt TodoExportsQueue.Arn
     Export:
       Name: !Sub '${AWS::StackName}-SQSQueueArn'
+
+  DynamoDBPolicyArn:
+    Description: ARN of the DynamoDB managed policy
+    Value: !Ref TodoAppDynamoDBManagedPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-DynamoDBPolicyArn'
+
+  S3PolicyArn:
+    Description: ARN of the S3 managed policy
+    Value: !Ref TodoAppS3ManagedPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-S3PolicyArn'
+
+  SNSPolicyArn:
+    Description: ARN of the SNS managed policy
+    Value: !Ref TodoAppSNSManagedPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-SNSPolicyArn'
+
+  SQSPolicyArn:
+    Description: ARN of the SQS managed policy
+    Value: !Ref TodoAppSQSManagedPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-SQSPolicyArn'
 
   AccessKeyId:
     Description: Access Key ID for the Todo App User
