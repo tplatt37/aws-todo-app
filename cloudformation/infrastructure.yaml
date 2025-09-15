@@ -86,6 +86,50 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # SNS Topic for Todo Notifications
+  TodoNotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'todo-notifications-${Environment}'
+      DisplayName: !Sub 'Todo Notifications - ${Environment}'
+      KmsMasterKeyId: alias/aws/sns
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SQS Queue for Todo Exports
+  TodoExportsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'todo-exports-${Environment}'
+      KmsMasterKeyId: alias/aws/sqs
+      MessageRetentionPeriod: 1209600  # 14 days
+      VisibilityTimeout: 120 # 120 seconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt TodoExportsDeadLetterQueue.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Dead Letter Queue for Todo Exports
+  # (Messages that fail repeatedly in the Exports queue go here for review)
+  TodoExportsDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'todo-exports-dlq-${Environment}'
+      KmsMasterKeyId: alias/aws/sqs
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: Application
+          Value: TodoApp
+        - Key: Environment
+          Value: !Ref Environment
+
   # IAM User for Application Access (Optional - for local development)
   TodoAppUser:
     Type: AWS::IAM::User
@@ -145,6 +189,39 @@ Resources:
       Users:
         - !Ref TodoAppUser
 
+  # IAM Policy for SNS Access
+  TodoAppSNSPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'TodoAppSNSPolicy-${Environment}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sns:Publish
+            Resource:
+              - !Ref TodoNotificationsTopic
+      Users:
+        - !Ref TodoAppUser
+
+  # IAM Policy for SQS Access
+  TodoAppSQSPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'TodoAppSQSPolicy-${Environment}'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+              - sqs:GetQueueAttributes
+            Resource:
+              - !GetAtt TodoExportsQueue.Arn
+      Users:
+        - !Ref TodoAppUser
+
   # Access Key for the IAM User (for local development)
   TodoAppUserAccessKey:
     Type: AWS::IAM::AccessKey
@@ -169,6 +246,30 @@ Outputs:
     Value: !Ref TodoBuildsBucket
     Export:
       Name: !Sub '${AWS::StackName}-Builds-S3BucketName'
+
+  SNSTopicArn:
+    Description: ARN of the SNS Topic for notifications
+    Value: !Ref TodoNotificationsTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-SNSTopicArn'
+
+  SNSTopicName:
+    Description: Name of the SNS Topic for notifications
+    Value: !GetAtt TodoNotificationsTopic.TopicName
+    Export:
+      Name: !Sub '${AWS::StackName}-SNSTopicName'
+
+  SQSQueueUrl:
+    Description: URL of the SQS Queue for exports
+    Value: !Ref TodoExportsQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-SQSQueueUrl'
+
+  SQSQueueArn:
+    Description: ARN of the SQS Queue for exports
+    Value: !GetAtt TodoExportsQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SQSQueueArn'
 
   AccessKeyId:
     Description: Access Key ID for the Todo App User
@@ -198,3 +299,5 @@ Outputs:
          AWS_SECRET_ACCESS_KEY=[SecretAccessKey from outputs]
          DYNAMODB_TABLE_NAME=${TodoItemsTable}
          S3_BUCKET_NAME=${TodoExportsBucket}
+         SNS_TOPIC_ARN=${TodoNotificationsTopic}
+         SQS_QUEUE_URL=${TodoExportsQueue}
