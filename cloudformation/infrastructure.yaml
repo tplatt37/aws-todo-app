@@ -130,6 +130,44 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # Parameter Store Parameters for Feature Flags
+  #
+  # A "Feature Flag" is used to dynamically turn a feature or codepath
+  # ON (true) or OFF (false) without having to deploy updated code.
+  #
+  SendNotificationsParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/todoapp/${Environment}/sendNotifications'
+      Type: String
+      Value: 'false'
+      Description: 'Feature flag to control whether notifications are sent'
+      Tags:
+        Application: TodoApp
+        Environment: !Ref Environment
+
+  ShowDeleteFromEditPageParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/todoapp/${Environment}/showDeleteFromEditPage'
+      Type: String
+      Value: 'false'
+      Description: 'Feature flag to control whether delete button is shown on edit page'
+      Tags:
+        Application: TodoApp
+        Environment: !Ref Environment
+
+  UseQueueForExportsParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/todoapp/${Environment}/useQueueForExports'
+      Type: String
+      Value: 'false'
+      Description: 'Feature flag to control whether queue is used for exports'
+      Tags:
+        Application: TodoApp
+        Environment: !Ref Environment
+
   # IAM User for Application Access (Optional - for local development)
   TodoAppUser:
     Type: AWS::IAM::User
@@ -140,6 +178,7 @@ Resources:
         - !Ref TodoAppS3ManagedPolicy
         - !Ref TodoAppSNSManagedPolicy
         - !Ref TodoAppSQSManagedPolicy
+        - !Ref TodoAppSSMManagedPolicy
       Tags:
         - Key: Application
           Value: TodoApp
@@ -223,6 +262,24 @@ Resources:
             Resource:
               - !GetAtt TodoExportsQueue.Arn
 
+  # IAM Managed Policy for Parameter Store Access
+  TodoAppSSMManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub 'TodoApp-SSM-Policy-${Environment}'
+      Description: 'Managed policy for Parameter Store access in Todo App'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:GetParametersByPath
+            Resource:
+              # This is a wildcard so any parameter in /todoapp/environment can be read
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/todoapp/${Environment}/*'
+
   # Access Key for the IAM User (for local development)
   TodoAppUserAccessKey:
     Type: AWS::IAM::AccessKey
@@ -296,13 +353,39 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-SQSPolicyArn'
 
-  AccessKeyId:
+  SSMPolicyArn:
+    Description: ARN of the Parameter Store managed policy
+    Value: !Ref TodoAppSSMManagedPolicy
+    Export:
+      Name: !Sub '${AWS::StackName}-SSMPolicyArn'
+
+  SendNotificationsParameterName:
+    Description: Name of the sendNotifications parameter
+    Value: !Ref SendNotificationsParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-SendNotificationsParameterName'
+
+  ShowDeleteFromEditPageParameterName:
+    Description: Name of the showDeleteFromEditPage parameter
+    Value: !Ref ShowDeleteFromEditPageParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-ShowDeleteFromEditPageParameterName'
+
+  UseQueueForExportsParameterName:
+    Description: Name of the useQueueForExports parameter
+    Value: !Ref UseQueueForExportsParameter
+    Export:
+      Name: !Sub '${AWS::StackName}-UseQueueForExportsParameterName'
+
+  # Name prefixed with "00" so these are listed at the top of the outputs
+  # (strictly for convenience when copying/pasting)
+  00AccessKeyId:
     Description: Access Key ID for the Todo App User
     Value: !Ref TodoAppUserAccessKey
     Export:
       Name: !Sub '${AWS::StackName}-AccessKeyId'
 
-  SecretAccessKey:
+  00SecretAccessKey:
     Description: Secret Access Key for the Todo App User (SAVE THIS SECURELY!)
     Value: !GetAtt TodoAppUserAccessKey.SecretAccessKey
     Export:
@@ -320,8 +403,8 @@ Outputs:
       1. Save the AccessKeyId and SecretAccessKey securely
       2. Create a .env.local file in your Next.js project with:
          AWS_REGION=${AWS::Region}
-         AWS_ACCESS_KEY_ID=[AccessKeyId from outputs]
-         AWS_SECRET_ACCESS_KEY=[SecretAccessKey from outputs]
+         AWS_ACCESS_KEY_ID=[00-AccessKeyId from outputs]
+         AWS_SECRET_ACCESS_KEY=[00-SecretAccessKey from outputs]
          DYNAMODB_TABLE_NAME=${TodoItemsTable}
          S3_BUCKET_NAME=${TodoExportsBucket}
          SNS_TOPIC_ARN=${TodoNotificationsTopic}
