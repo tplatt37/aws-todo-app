@@ -2,6 +2,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 
+import { fetchFeatureFlags } from './featureFlags';
+import { sendTodoNotification } from './sns';
 import { TodoItem, CreateTodoInput, UpdateTodoInput, ApiError } from './types';
 
 // Initialize DynamoDB Client
@@ -107,6 +109,23 @@ export async function createTodo(input: CreateTodoInput): Promise<TodoItem> {
     });
 
     await docClient.send(command);
+
+    // Check feature flag and send SNS notification if enabled
+    try {
+      const featureFlags = await fetchFeatureFlags();
+      if (featureFlags.sendNotifications) {
+        await sendTodoNotification(newTodo);
+      }
+    } catch (snsError) {
+      // If SNS fails when notifications are enabled, throw the error to show students
+      const featureFlags = await fetchFeatureFlags();
+      if (featureFlags.sendNotifications) {
+        throw snsError;
+      }
+      // If notifications are disabled, just log the error but don't fail the operation
+      console.warn('SNS notification failed (notifications disabled):', snsError);
+    }
+
     return newTodo;
   } catch (error) {
     throw handleDynamoDBError(error);
@@ -162,7 +181,27 @@ export async function updateTodo(id: string, input: UpdateTodoInput): Promise<To
     });
 
     const response = await docClient.send(command);
-    return response.Attributes as TodoItem || null;
+    const updatedTodo = response.Attributes as TodoItem || null;
+
+    // Check feature flag and send SNS notification if enabled
+    if (updatedTodo) {
+      try {
+        const featureFlags = await fetchFeatureFlags();
+        if (featureFlags.sendNotifications) {
+          await sendTodoNotification(updatedTodo);
+        }
+      } catch (snsError) {
+        // If SNS fails when notifications are enabled, throw the error to show students
+        const featureFlags = await fetchFeatureFlags();
+        if (featureFlags.sendNotifications) {
+          throw snsError;
+        }
+        // If notifications are disabled, just log the error but don't fail the operation
+        console.warn('SNS notification failed (notifications disabled):', snsError);
+      }
+    }
+
+    return updatedTodo;
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
       return null; // Item doesn't exist
