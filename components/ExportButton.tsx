@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { ApiError, ApiResponse, ExportResponse } from '@/lib/types';
+import { ApiError, ApiResponse, ExportResponse, QueuedExportResponse } from '@/lib/types';
 
 import LoadingSpinner from './LoadingSpinner';
 
@@ -13,17 +13,19 @@ interface ExportButtonProps {
 export default function ExportButton({ onError }: ExportButtonProps) {
   const [loading, setLoading] = useState(false);
   const [exportInfo, setExportInfo] = useState<ExportResponse | null>(null);
+  const [queuedInfo, setQueuedInfo] = useState<QueuedExportResponse | null>(null);
 
   const handleExport = async () => {
     setLoading(true);
     setExportInfo(null);
+    setQueuedInfo(null);
     
     try {
       const response = await fetch('/api/export', {
         method: 'POST',
       });
       
-      const data: ApiResponse<ExportResponse> = await response.json();
+      const data: ApiResponse<ExportResponse | QueuedExportResponse> = await response.json();
       
       if (!data.success) {
         onError(data.error || { message: 'Export failed', code: 'EXPORT_ERROR' });
@@ -31,9 +33,16 @@ export default function ExportButton({ onError }: ExportButtonProps) {
       }
       
       if (data.data) {
-        setExportInfo(data.data);
-        // Automatically open the download link
-        window.open(data.data.downloadUrl, '_blank');
+        // Check if this is a queued export response or immediate export response
+        if ('downloadUrl' in data.data) {
+          // Synchronous export - has downloadUrl
+          setExportInfo(data.data as ExportResponse);
+          // Automatically open the download link
+          window.open(data.data.downloadUrl, '_blank');
+        } else {
+          // Asynchronous export - queued response
+          setQueuedInfo(data.data as QueuedExportResponse);
+        }
       }
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'message' in error) {
@@ -68,6 +77,15 @@ export default function ExportButton({ onError }: ExportButtonProps) {
           <p>
             Export ready! The download link will expire at{' '}
             {new Date(exportInfo.expiresAt).toLocaleTimeString()}
+          </p>
+        </div>
+      )}
+      
+      {queuedInfo && (
+        <div className="text-sm text-blue-600">
+          <p>{queuedInfo.message}</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Export ID: {queuedInfo.exportId} | Queued at: {new Date(queuedInfo.queuedAt).toLocaleTimeString()}
           </p>
         </div>
       )}

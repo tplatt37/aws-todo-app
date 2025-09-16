@@ -47,6 +47,13 @@ export interface ExportResponse {
   fileName: string;
 }
 
+// Queued Export Response Type
+export interface QueuedExportResponse {
+  message: string;
+  exportId: string;
+  queuedAt: string;
+}
+
 // Sort Types
 export type SortField = 'description' | 'dueDate' | 'priority' | 'status' | 'createdAt';
 export type SortDirection = 'asc' | 'desc';
