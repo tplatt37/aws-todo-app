@@ -51,12 +51,49 @@ How do we fix?   Go write a customer managed policy or inline policy to give rea
 *** Make sure you give permissions to the BUCKET CONTENTS ***
 arn:aws:s3:::todo-exports-123456789012-dev/*
 
+# SNS
+
+## Create SNS Topic
+
+1. Create a topic named "test"
+2. Add an Email subscription - make sure it works (You MUST "Confirm Subscription")
+
+## Configure App to use the SNS Topic
+
+3. Create a LAUNCH TEMPLATE so you can easily revise settings
+4. Add 
+SNS_TOPIC_ARN=arn:aws:sns:us-east-1:123456789012:test 
+To the line that launches nodejs.  This sets another environment variable.
+5. Launch instance from this template
+
+We also need to TURN ON the code path via a Feature Flag (an SSM Parameter)
+
+## Configure Systems Manager Parameter Store
+
+6. Go to SSM Parameter Store
+7. Create parameter
+    Name: /todoapp/dev/sendNotifications
+    Data type: text 
+    Value: true
+
+## Permissions
+
+8. We need to make sure the EC2 Instance Profile Role has :
+* AmazonSNSFullAccess
+* AmazonSSMReadOnlyAccess
+
+
+Go to the app and update an item to any status - you should get an email!
+
+# SQS & Lambda
+
 # Cleanup
 
 1. Terminate EC2 instance
-2. Delete DynamoDB Table
-3. Delete IAM todo-app role and any customer managed policy
-4. Delete SSM Parameters
-5. Delete SNS Topic
-6. Delete SQS Queue
-7. Empty and Delete both S3 buckets (Builds and Exports)
+2. Delete Launch Template
+3. Delete DynamoDB Table
+4. Delete IAM todo-app role and any customer managed policy
+5. Delete SSM Parameters
+6. Delete SNS Topic
+7. Delete SQS Queue
+8. Empty and Delete both S3 buckets (Builds and Exports)
