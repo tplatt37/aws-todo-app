@@ -46,5 +46,8 @@ You can now Add, Edit, Delete todo items!
 2. Create a bucket named: todo-exports-$AWS_ACCOUNT_ID-dev
 3. Try again, you'll get 403 (Access Denied) s3:PutObject 
 
-How do we fix?   Go write a customer managed policy to give read/write to this specific bucket
+How do we fix?   Go write a customer managed policy or inline policy to give read/write to this specific bucket
+
+*** Make sure you give permissions to the BUCKET CONTENTS ***
+arn:aws:s3:::todo-exports-123456789012-dev/*
 

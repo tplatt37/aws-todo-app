@@ -54,8 +54,13 @@ export async function POST() {
       return createSuccessResponse(response);
     } else {
       // Synchronous export (existing behavior)
+      
+      //
       // Add configurable delay to simulate slow processing
-      const delaySeconds = parseInt(process.env.EXPORT_DELAY_SECONDS || '0', 10);
+      // Default to 15 second delay. This is totally BOGUS
+      // But it tees up the conversation for EVENT DRIVEN and ASYNCHRONOUS architectures
+      //
+      const delaySeconds = parseInt(process.env.EXPORT_DELAY_SECONDS || '15', 15);
       if (delaySeconds > 0) {
         await setTimeout(delaySeconds * 1000);
       }
