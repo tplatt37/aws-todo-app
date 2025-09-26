@@ -51,3 +51,12 @@ How do we fix?   Go write a customer managed policy or inline policy to give rea
 *** Make sure you give permissions to the BUCKET CONTENTS ***
 arn:aws:s3:::todo-exports-123456789012-dev/*
 
+# Cleanup
+
+1. Terminate EC2 instance
+2. Delete DynamoDB Table
+3. Delete IAM todo-app role and any customer managed policy
+4. Delete SSM Parameters
+5. Delete SNS Topic
+6. Delete SQS Queue
+7. Empty and Delete both S3 buckets (Builds and Exports)
