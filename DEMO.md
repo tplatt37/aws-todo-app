@@ -27,7 +27,7 @@ aws s3 ls
     Return to EC2 instance, Refresh and choose "todo-app" as the "IAM Instance Profile"
 3. Paste ec2/userdata.txt into the User Data section under Advanced Settings
 
-(It will take 2-3 minutes to boot and to RUN the user data)
+(It will take 2-3 minutes to boot and to RUN the user data - and especially "npm install")
 
 If issues, use the "Connect" button to get to a terminal:
 
@@ -62,18 +62,21 @@ How do we fix?   Go write a customer managed policy or inline policy to give rea
 *** Make sure you give permissions to the BUCKET CONTENTS ***
 arn:aws:s3:::todo-exports-123456789012-dev/*
 
+(Make sure to enable pop-up when you retry)
+
+
 # SNS
 
 ## Create SNS Topic
 
-1. Create a topic named "test"
+1. Create a STANDARD topic named "todo"
 2. Add an Email subscription - make sure it works (You MUST "Confirm Subscription")
 
 ## Configure App to use the SNS Topic
 
-3. Create a LAUNCH TEMPLATE so you can easily revise settings
+3. Go create a NEW VERSION of your launch template
 4. Add 
-SNS_TOPIC_ARN=arn:aws:sns:us-east-1:123456789012:test 
+SNS_TOPIC_ARN=arn:aws:sns:us-east-1:123456789012:todo
 To the line that launches nodejs.  This sets another environment variable.
 5. Launch instance from this template
 
@@ -105,6 +108,9 @@ Go to the app and update an item to any status - you should get an email!
 
 Make a note of the Queue URL - you will need that to configure the Lambda function.
 
+2. Modify your Launch Template to have 
+SQS_QUEUE_URL=(your queue URL)
+
 ## Create a Lambda function
 
 1. Use the Python code
@@ -114,8 +120,14 @@ Make a note of the Queue URL - you will need that to configure the Lambda functi
     * AmazonSQSFullAccess
     * AmazonS3FullAccess
 3. Add a "Trigger" to invoke the Lambda based on SQS messages arriving in the queue.
-4. Set Environment Variables for the SNS Topic, Bucket Name , and DynamoDB Table Name
-5. Try testing the Lambda by dropping any message into the queue
+4. Make sure Lambda Function timeout is > 3 second - make it 30 seconds.
+5. Set Environment Variables for the SNS Topic, Bucket Name , and DynamoDB Table Name
+
+DYNAMODB_TABLE_NAME
+S3_BUCKET_NAME
+SNS_TOPIC_ARN
+
+6. Try testing the Lambda by dropping any message into the queue
 
 ## Activate Feature Flag (SSM Parameter Store)
 
