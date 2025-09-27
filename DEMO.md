@@ -149,3 +149,4 @@ OR look at the Lambda Log output
 6. Delete SNS Topic
 7. Delete SQS Queue
 8. Empty and Delete both S3 buckets (Builds and Exports)
+9. Delete Log Groups in CloudWatch 
