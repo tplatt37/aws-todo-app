@@ -1,8 +1,19 @@
 # Solution Architect Associate Demo
 
-## EC2 & Instance Profile 
+## S3 Bucket
 
-1. Launch an EC2 instance (t2.small, Amazon Linux 2023)
+1. Create two bucket(s) named :
+   todo-exports-$AWS_ACCOUNT_ID-dev 
+   todo-builds-$AWS_ACCOUNT_ID-dev
+2. Use CloudShell and the AWS CLI to copy a file from a public bucket to your BUILDS bucket:
+```
+aws s3 cp s3:\\platt-web\todo.zip s3:\\YOUR-BUCKET-NAME
+aws s3 ls
+```
+
+## EC2 Launch Template & Instance Profile 
+
+1. Create a LAUNCH TEMPLATE fo ran a t2.small, Amazon Linux 2023
 2. Use any Public Subnet, make sure it Assign Public IP is ENABLED
 3. Create New Security Group (we'll need to open port 3000 later)
 2. Create an IAM Profile:
@@ -86,6 +97,35 @@ We also need to TURN ON the code path via a Feature Flag (an SSM Parameter)
 Go to the app and update an item to any status - you should get an email!
 
 # SQS & Lambda
+
+## SQS Queue
+
+1. Create a Standard Queue:
+    name: TodoItems-dev
+
+Make a note of the Queue URL - you will need that to configure the Lambda function.
+
+## Create a Lambda function
+
+1. Use the Python code
+2. Execution Role will require:
+    * AmazonDynamoDBFullAccess
+    * AmazonSNSFullAccess
+    * AmazonSQSFullAccess
+    * AmazonS3FullAccess
+3. Add a "Trigger" to invoke the Lambda based on SQS messages arriving in the queue.
+4. Set Environment Variables for the SNS Topic, Bucket Name , and DynamoDB Table Name
+5. Try testing the Lambda by dropping any message into the queue
+
+## Activate Feature Flag (SSM Parameter Store)
+
+1. Create an SSM Parameter Store setting as:
+   name: /todoapp/dev/useQueueForExports
+   with a value of "true"
+
+Try submitting an Export Request from the web app, and you should receive an email notification
+OR look at the Lambda Log output
+
 
 # Cleanup
 
