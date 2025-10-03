@@ -26,7 +26,11 @@ This application was generated and is maintained using AI: VS Code with Cline us
 - AWS Account with appropriate permissions
 - AWS CLI configured (optional, for CloudFormation deployment)
 
-## Setup Instructions
+## Setup Using CloudFormation (Infraastructure as Code)
+
+In class, we walk through configuring each component step by step.
+
+But, there is a CloudFormation template that will get the app up and running with all resources (Buckets, DynamoDB, SQS, SNS).
 
 ### 1. Deploy AWS Infrastructure
 
@@ -37,10 +41,16 @@ Deploy the CloudFormation stack to create the required DynamoDB table and S3 buc
 cd cloudformation
 
 # Deploy the stack (replace 'my-todo-app-stack' with your preferred stack name)
+#
+# NOTE: You MUST replace the <YOUR VPC ID> below with a valid VPC ID.
+# A Subnet will be used and it must be a public subnet. 
+# THEREFORE - deploy this to the DEFAULT VPC (which has nothing but Public subnets)
+# (A real deployment would use a Private Subnet behind an ALB)
+#
 aws cloudformation create-stack \
   --stack-name my-todo-app-stack \
   --template-body file://infrastructure.yaml \
-  --parameters ParameterKey=Environment,ParameterValue=dev \
+  --parameters ParameterKey=Environment,ParameterValue=dev VPCId=<YOUR VPC ID> \
   --capabilities CAPABILITY_NAMED_IAM \
   --region us-east-1
 

@@ -24,7 +24,7 @@ Replace the ARN with your actual SNS topic ARN.
 
 Set the feature flag in AWS Parameter Store:
 
-**Parameter Name:** `/todoapp/dev/sendNotifications`
+**Parameter Name:** `/todoapp/sendNotifications`
 **Value:** `true` (to enable) or `false` (to disable)
 
 ## How It Works
@@ -71,7 +71,7 @@ The SNS message contains the complete todo item as JSON:
 ## Testing the Feature
 
 1. **Enable notifications:**
-   - Set `/todoapp/dev/sendNotifications` to `true` in Parameter Store
+   - Set `/todoapp/sendNotifications` to `true` in Parameter Store
    - Ensure `SNS_TOPIC_ARN` is configured correctly
 
 2. **Create or update a todo:**

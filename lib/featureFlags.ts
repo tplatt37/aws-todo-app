@@ -11,11 +11,11 @@ const ssmClient = new SSMClient({
   } : undefined,
 });
 
-const PARAMETER_PATH = '/todoapp/dev/';
+const PARAMETER_PATH = '/todoapp/';
 
 /**
  * Fetches feature flags from AWS Parameter Store
- * Parameters should be stored with path prefix '/todoapp/dev/'
+ * Parameters should be stored with path prefix '/todoapp/'
  * Parameter values should be string 'true' or 'false'
  */
 export async function fetchFeatureFlags(): Promise<FeatureFlags> {

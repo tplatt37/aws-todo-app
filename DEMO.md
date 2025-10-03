@@ -86,7 +86,7 @@ We also need to TURN ON the code path via a Feature Flag (an SSM Parameter)
 
 6. Go to SSM Parameter Store
 7. Create parameter
-    Name: /todoapp/dev/sendNotifications
+    Name: /todoapp/sendNotifications
     Data type: text 
     Value: true
 

@@ -2,21 +2,22 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Infrastructure for Todo List Application - DynamoDB Table and S3 Bucket'
 
 Parameters:
-  Environment:
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the EC2 instance will be launched
+
+  CopyBuildFromBucket:
     Type: String
-    Default: 'dev'
-    Description: Environment name (dev, staging, prod)
-    AllowedValues:
-      - dev
-      - staging
-      - prod
+    Description: ARN of the public S3 bucket containing the instructor's build file (fallback if own build doesn't exist)
+    AllowedPattern: '^arn:aws:s3:::[a-z0-9][a-z0-9\-]*[a-z0-9]$'
+    ConstraintDescription: Must be a valid S3 bucket ARN
 
 Resources:
   # DynamoDB Table for Todo Items
   TodoItemsTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub 'TodoItems-${Environment}'
+      TableName: 'TodoItems'
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
@@ -27,14 +28,12 @@ Resources:
       Tags:
         - Key: Application
           Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
 
   # S3 Bucket for CSV Exports
   TodoExportsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'todo-exports-${AWS::AccountId}-${Environment}'
+      BucketName: !Sub 'todo-exports-${AWS::AccountId}'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -55,14 +54,12 @@ Resources:
       Tags:
         - Key: Application
           Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
 
   # S3 Bucket for Builds 
   TodoBuildsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'todo-builds-${AWS::AccountId}-${Environment}'
+      BucketName: !Sub 'todo-builds-${AWS::AccountId}'
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -83,52 +80,29 @@ Resources:
       Tags:
         - Key: Application
           Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
 
   # SNS Topic for Todo Notifications
   TodoNotificationsTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !Sub 'todo-notifications-${Environment}'
-      DisplayName: !Sub 'Todo Notifications - ${Environment}'
+      TopicName: 'todo-notifications'
+      DisplayName: 'Todo Notifications'
       KmsMasterKeyId: alias/aws/sns
       Tags:
         - Key: Application
           Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
 
   # SQS Queue for Todo Exports
   TodoExportsQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub 'todo-exports-${Environment}'
+      QueueName: 'todo-exports'
       KmsMasterKeyId: alias/aws/sqs
       MessageRetentionPeriod: 1209600  # 14 days
       VisibilityTimeout: 120 # 120 seconds
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt TodoExportsDeadLetterQueue.Arn
-        maxReceiveCount: 3
       Tags:
         - Key: Application
           Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
-
-  # Dead Letter Queue for Todo Exports
-  # (Messages that fail repeatedly in the Exports queue go here for review)
-  TodoExportsDeadLetterQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub 'todo-exports-dlq-${Environment}'
-      KmsMasterKeyId: alias/aws/sqs
-      MessageRetentionPeriod: 1209600  # 14 days
-      Tags:
-        - Key: Application
-          Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
 
   # Parameter Store Parameters for Feature Flags
   #
@@ -138,41 +112,38 @@ Resources:
   SendNotificationsParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub '/todoapp/${Environment}/sendNotifications'
+      Name: '/todoapp/sendNotifications'
       Type: String
       Value: 'false'
       Description: 'Feature flag to control whether notifications are sent'
       Tags:
         Application: TodoApp
-        Environment: !Ref Environment
 
   ShowDeleteFromEditPageParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub '/todoapp/${Environment}/showDeleteFromEditPage'
+      Name: '/todoapp/showDeleteFromEditPage'
       Type: String
       Value: 'false'
       Description: 'Feature flag to control whether delete button is shown on edit page'
       Tags:
         Application: TodoApp
-        Environment: !Ref Environment
 
   UseQueueForExportsParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: !Sub '/todoapp/${Environment}/useQueueForExports'
+      Name: '/todoapp/useQueueForExports'
       Type: String
       Value: 'false'
       Description: 'Feature flag to control whether queue is used for exports'
       Tags:
         Application: TodoApp
-        Environment: !Ref Environment
 
   # IAM Managed Policy for DynamoDB Access
   TodoAppDynamoDBManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub 'TodoApp-DynamoDB-Policy-${Environment}'
+      ManagedPolicyName: 'TodoApp-DynamoDB-Policy'
       Description: 'Managed policy for DynamoDB access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
@@ -190,11 +161,12 @@ Resources:
               - !GetAtt TodoItemsTable.Arn
               - !Sub '${TodoItemsTable.Arn}/index/*'
 
-  # IAM Managed Policy for S3 Access
-  TodoAppS3ManagedPolicy:
+  # IAM Managed Policy for S3 Access to the Exports bucket
+  # Needed by the App's Export functionality
+  TodoAppS3ManagedExportsPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub 'TodoApp-S3-Policy-${Environment}'
+      ManagedPolicyName: 'TodoApp-S3-Policy-Export'
       Description: 'Managed policy for S3 access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
@@ -214,11 +186,55 @@ Resources:
             Resource:
               - !GetAtt TodoExportsBucket.Arn
 
+  # IAM Managed Policy for S3 Access to the Own Builds bucket
+  # Allows EC2 to read from the template-created build bucket
+  TodoAppS3ManagedOwnBuildsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: 'TodoApp-S3-Policy-OwnBuilds'
+      Description: 'Managed policy for S3 access to retrieve build zip file from own bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource:
+              - !Sub '${TodoBuildsBucket.Arn}/*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !GetAtt TodoBuildsBucket.Arn
+
+  # IAM Managed Policy for S3 Access to the Instructor's Builds bucket
+  # Allows EC2 to read from the instructor's public build bucket (fallback)
+  TodoAppS3ManagedInstructorBuildsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: 'TodoApp-S3-Policy-InstructorBuilds'
+      Description: 'Managed policy for S3 access to retrieve build zip file from instructor bucket'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource:
+              - !Sub '${CopyBuildFromBucket}/*'
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !Ref CopyBuildFromBucket
+
   # IAM Managed Policy for SNS Access
   TodoAppSNSManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub 'TodoApp-SNS-Policy-${Environment}'
+      ManagedPolicyName: 'TodoApp-SNS-Policy'
       Description: 'Managed policy for SNS access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
@@ -233,7 +249,7 @@ Resources:
   TodoAppSQSManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub 'TodoApp-SQS-Policy-${Environment}'
+      ManagedPolicyName: 'TodoApp-SQS-Policy'
       Description: 'Managed policy for SQS access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
@@ -249,7 +265,7 @@ Resources:
   TodoAppSSMManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub 'TodoApp-SSM-Policy-${Environment}'
+      ManagedPolicyName: 'TodoApp-SSM-Policy'
       Description: 'Managed policy for Parameter Store access in Todo App'
       PolicyDocument:
         Version: '2012-10-17'
@@ -260,8 +276,159 @@ Resources:
               - ssm:GetParameters
               - ssm:GetParametersByPath
             Resource:
-              # This is a wildcard so any parameter in /todoapp/environment can be read
-              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/todoapp/${Environment}/*'
+              # This is a wildcard so any parameter in /todoapp can be read
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/todoapp/*'
+
+  # IAM Role for EC2 Instance
+  TodoAppEC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'TodoApp-EC2-Role'
+      Description: 'IAM Role for EC2 instances running the Todo App'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref TodoAppDynamoDBManagedPolicy
+        - !Ref TodoAppS3ManagedExportsPolicy
+        - !Ref TodoAppS3ManagedOwnBuildsPolicy
+        - !Ref TodoAppS3ManagedInstructorBuildsPolicy
+        - !Ref TodoAppSNSManagedPolicy
+        - !Ref TodoAppSQSManagedPolicy
+        - !Ref TodoAppSSMManagedPolicy
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - Key: Application
+          Value: TodoApp
+
+  # EC2 Instance Profile
+  TodoAppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: 'TodoApp-InstanceProfile'
+      Roles:
+        - !Ref TodoAppEC2Role
+
+  # Security Group for EC2 Instance
+  TodoAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: 'TodoApp-SecurityGroup'
+      GroupDescription: 'Security group for Todo App EC2 instances'
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow Next.js application access'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: 'Allow all outbound traffic'
+      Tags:
+        - Key: Name
+          Value: 'TodoApp-SG'
+        - Key: Application
+          Value: TodoApp
+
+  # Launch Template for EC2 Instance
+  TodoAppLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: 'TodoApp-LaunchTemplate'
+      LaunchTemplateData:
+        ImageId: '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+        InstanceType: t3.medium
+        IamInstanceProfile:
+          Arn: !GetAtt TodoAppInstanceProfile.Arn
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeviceIndex: 0
+            Groups:
+              - !Ref TodoAppSecurityGroup
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            # User Data script for To Do App deployment (NodeJs/Next.js)
+
+            # Install Node.js LTS and npm
+            curl -fsSL https://rpm.nodesource.com/setup_lts.x | bash -
+            dnf install -y nodejs
+
+            # Retrieve REGION and AWS ACCOUNT ID automatically using IMDS v2
+            # IMDS = Instance Meta Data Service
+            # This allows us to retrieve dynamic settings (Like IP Address) at launch
+            TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" \
+              -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" \
+              -s)
+
+            IDENTITY_DOCUMENT=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+              -s http://169.254.169.254/latest/dynamic/instance-identity/document)
+
+            export AWS_REGION=$(echo "$IDENTITY_DOCUMENT" | grep -oP '"region"\s*:\s*"\K[^"]+')
+            echo "AWS_REGION=$AWS_REGION"
+
+            export AWS_ACCOUNT_ID=$(echo "$IDENTITY_DOCUMENT" | grep -oP '"accountId"\s*:\s*"\K[^"]+')
+            echo "AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
+
+            # Create and navigate to app directory
+            mkdir -p /opt/nextjs-app
+            cd /opt/nextjs-app
+
+            # Download and extract build file
+            # Try own bucket first, fallback to instructor's bucket if not found
+            echo "Attempting to download build from own bucket..."
+            if ! aws s3 cp s3://todo-builds-$AWS_ACCOUNT_ID/todo.zip ./todo.zip 2>/dev/null; then
+                echo "Build not found in own bucket, trying instructor's bucket..."
+                # Extract bucket name from ARN (format: arn:aws:s3:::bucket-name)
+                INSTRUCTOR_BUCKET=$(echo "${CopyBuildFromBucket}" | cut -d: -f6)
+                echo "Instructor bucket: $INSTRUCTOR_BUCKET"
+                aws s3 cp s3://$INSTRUCTOR_BUCKET/todo.zip ./todo.zip
+                if [ $? -eq 0 ]; then
+                    echo "Successfully downloaded build from instructor's bucket"
+                else
+                    echo "ERROR: Failed to download build from either bucket"
+                    exit 1
+                fi
+            else
+                echo "Successfully downloaded build from own bucket"
+            fi
+
+            # Extract the build
+            unzip todo.zip
+
+            # Install dependencies for Linux platform
+            npm install --production
+
+            # Start the Next.js application
+            AWS_REGION=$AWS_REGION EXPORT_DELAY_SECONDS=15 DYNAMODB_TABLE_NAME=${TodoItemsTable} S3_BUCKET_NAME=${TodoExportsBucket} SNS_TOPIC_ARN=${TodoNotificationsTopic} SQS_QUEUE_URL=${TodoExportsQueue} nohup npm start > /var/log/nextjs-app.log 2>&1 &
+
+            echo "To Do application started. Check logs at: /var/log/nextjs-app.log"
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: 'TodoApp-Instance'
+              - Key: Application
+                Value: TodoApp
+
+  # EC2 Instance
+  TodoAppEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref TodoAppLaunchTemplate
+        Version: !GetAtt TodoAppLaunchTemplate.LatestVersionNumber
+      Tags:
+        - Key: Name
+          Value: 'TodoApp-Instance'
+        - Key: Application
+          Value: TodoApp
 
 Outputs:
   DynamoDBTableName:
@@ -306,56 +473,20 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-SQSQueueArn'
 
-  DynamoDBPolicyArn:
-    Description: ARN of the DynamoDB managed policy
-    Value: !Ref TodoAppDynamoDBManagedPolicy
+  EC2PublicIp:
+    Description: EC2 Instance Public IP Address
+    Value: !GetAtt TodoAppEC2Instance.PublicIp
     Export:
-      Name: !Sub '${AWS::StackName}-DynamoDBPolicyArn'
+      Name: !Sub '${AWS::StackName}-EC2PublicIp'
 
-  S3PolicyArn:
-    Description: ARN of the S3 managed policy
-    Value: !Ref TodoAppS3ManagedPolicy
+  EC2PublicDnsName:
+    Description: EC2 Instance Public DNS Name
+    Value: !GetAtt TodoAppEC2Instance.PublicDnsName
     Export:
-      Name: !Sub '${AWS::StackName}-S3PolicyArn'
+      Name: !Sub '${AWS::StackName}-EC2PublicDnsName'
 
-  SNSPolicyArn:
-    Description: ARN of the SNS managed policy
-    Value: !Ref TodoAppSNSManagedPolicy
+  EC2ApplicationUrl:
+    Description: URL to access the Todo Application
+    Value: !Sub 'http://${TodoAppEC2Instance.PublicIp}:3000'
     Export:
-      Name: !Sub '${AWS::StackName}-SNSPolicyArn'
-
-  SQSPolicyArn:
-    Description: ARN of the SQS managed policy
-    Value: !Ref TodoAppSQSManagedPolicy
-    Export:
-      Name: !Sub '${AWS::StackName}-SQSPolicyArn'
-
-  SSMPolicyArn:
-    Description: ARN of the Parameter Store managed policy
-    Value: !Ref TodoAppSSMManagedPolicy
-    Export:
-      Name: !Sub '${AWS::StackName}-SSMPolicyArn'
-
-  SendNotificationsParameterName:
-    Description: Name of the sendNotifications parameter
-    Value: !Ref SendNotificationsParameter
-    Export:
-      Name: !Sub '${AWS::StackName}-SendNotificationsParameterName'
-
-  ShowDeleteFromEditPageParameterName:
-    Description: Name of the showDeleteFromEditPage parameter
-    Value: !Ref ShowDeleteFromEditPageParameter
-    Export:
-      Name: !Sub '${AWS::StackName}-ShowDeleteFromEditPageParameterName'
-
-  UseQueueForExportsParameterName:
-    Description: Name of the useQueueForExports parameter
-    Value: !Ref UseQueueForExportsParameter
-    Export:
-      Name: !Sub '${AWS::StackName}-UseQueueForExportsParameterName'
-
-  Region:
-    Description: AWS Region
-    Value: !Ref AWS::Region
-    Export:
-      Name: !Sub '${AWS::StackName}-Region'
+      Name: !Sub '${AWS::StackName}-EC2ApplicationUrl'
