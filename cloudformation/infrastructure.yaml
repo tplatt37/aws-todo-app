@@ -168,23 +168,6 @@ Resources:
         Application: TodoApp
         Environment: !Ref Environment
 
-  # IAM User for Application Access (Optional - for local development)
-  TodoAppUser:
-    Type: AWS::IAM::User
-    Properties:
-      UserName: !Sub 'todo-app-user-${Environment}'
-      ManagedPolicyArns:
-        - !Ref TodoAppDynamoDBManagedPolicy
-        - !Ref TodoAppS3ManagedPolicy
-        - !Ref TodoAppSNSManagedPolicy
-        - !Ref TodoAppSQSManagedPolicy
-        - !Ref TodoAppSSMManagedPolicy
-      Tags:
-        - Key: Application
-          Value: TodoApp
-        - Key: Environment
-          Value: !Ref Environment
-
   # IAM Managed Policy for DynamoDB Access
   TodoAppDynamoDBManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -280,12 +263,6 @@ Resources:
               # This is a wildcard so any parameter in /todoapp/environment can be read
               - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/todoapp/${Environment}/*'
 
-  # Access Key for the IAM User (for local development)
-  TodoAppUserAccessKey:
-    Type: AWS::IAM::AccessKey
-    Properties:
-      UserName: !Ref TodoAppUser
-
 Outputs:
   DynamoDBTableName:
     Description: Name of the DynamoDB table
@@ -377,35 +354,8 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-UseQueueForExportsParameterName'
 
-  # Name prefixed with "00" so these are listed at the top of the outputs
-  # (strictly for convenience when copying/pasting)
-  00AccessKeyId:
-    Description: Access Key ID for the Todo App User
-    Value: !Ref TodoAppUserAccessKey
-    Export:
-      Name: !Sub '${AWS::StackName}-AccessKeyId'
-
-  00SecretAccessKey:
-    Description: Secret Access Key for the Todo App User (SAVE THIS SECURELY!)
-    Value: !GetAtt TodoAppUserAccessKey.SecretAccessKey
-    Export:
-      Name: !Sub '${AWS::StackName}-SecretAccessKey'
-
   Region:
     Description: AWS Region
     Value: !Ref AWS::Region
     Export:
       Name: !Sub '${AWS::StackName}-Region'
-
-  Instructions:
-    Description: Setup Instructions
-    Value: !Sub |
-      1. Save the AccessKeyId and SecretAccessKey securely
-      2. Create a .env.local file in your Next.js project with:
-         AWS_REGION=${AWS::Region}
-         AWS_ACCESS_KEY_ID=[00-AccessKeyId from outputs]
-         AWS_SECRET_ACCESS_KEY=[00-SecretAccessKey from outputs]
-         DYNAMODB_TABLE_NAME=${TodoItemsTable}
-         S3_BUCKET_NAME=${TodoExportsBucket}
-         SNS_TOPIC_ARN=${TodoNotificationsTopic}
-         SQS_QUEUE_URL=${TodoExportsQueue}

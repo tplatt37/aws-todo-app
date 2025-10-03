@@ -66,8 +66,8 @@ cp .env.local.example .env.local
 2. Edit `.env.local` and add your AWS credentials and resource names from the CloudFormation outputs:
 ```env
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=<AccessKeyId from CloudFormation outputs>
-AWS_SECRET_ACCESS_KEY=<SecretAccessKey from CloudFormation outputs>
+AWS_ACCESS_KEY_ID=<AccessKeyId>
+AWS_SECRET_ACCESS_KEY=<SecretAccessKey>
 DYNAMODB_TABLE_NAME=<DynamoDBTableName from CloudFormation outputs>
 S3_BUCKET_NAME=<S3BucketName from CloudFormation outputs>
 ```
@@ -202,9 +202,9 @@ CSV includes: ID, Description, Due Date, Priority, Status, Created At, Updated A
 For production deployment:
 
 1. Use environment variables from your hosting provider (Vercel, AWS Amplify, etc.)
-2. Consider using IAM roles instead of access keys
+2. Consider using IAM roles (Via Instance Profile for EC2) instead of access keys
 3. Enable HTTPS
-4. Implement authentication/authorization
+4. Implement authentication/authorization (Perhaps via Cognito)
 5. Set up monitoring and alerting
 6. Configure backup strategies for DynamoDB
 
